@@ -17,7 +17,7 @@ class Query:
     """
     # internal Method
     # Read a record with specified RID
-    # Returns True upon succesful deletion
+    # Returns True upon successful deletion
     # Return False if record doesn't exist or is locked due to 2PL
     """
     def delete(self, primary_key):
@@ -52,7 +52,7 @@ class Query:
     # :param search_key: the value you want to search based on
     # :param search_key_index: the column index you want to search based on
     # :param projected_columns_index: what columns to return. array of 1 or 0 values.
-    # :param relative_version: the relative version of the record you need to retreive.
+    # :param relative_version: the relative version of the record you need to retrieve.
     # Returns a list of Record objects upon success
     # Returns False if record locked by TPL
     # Assume that select will never be called on a key that doesn't exist

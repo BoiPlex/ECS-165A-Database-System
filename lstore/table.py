@@ -5,14 +5,16 @@ from lstore.page_range import PageRange
 from lstore.logical_page import LogicalPage
 from time import time
 
+
+from BTrees.OOBTree import BTree
+
+
 class Record:
 
     def __init__(self, rid, key, columns):
         self.rid = rid
         self.key = key
         self.columns = columns
-
-
 
 class Table:
 
@@ -25,28 +27,22 @@ class Table:
         self.name = name
         self.key = key
         self.num_columns = num_columns
-        self.page_directory = {} # Maps RID -> (Page Range Index, Base Page Index, Offset)
+        
+        # Maps RID -> (Page Range Index, Logical Page Index, Page Offset)
+        self.page_directory = BTree()
+
         self.index = Index(self)
         
         self.next_rid = 0
-        self.page_ranges = [PageRange(num_columns)]
-        pass
+        self.page_ranges = [PageRange(self.num_columns)]
 
-    
-    """
-    RID -> [which page range -> which BP of 16 -> which index in BP]
-    {RID: page_range, base_page, index}
-    
-    
-    """
-
-    def read_record(self, rid):
+    def read_value(self, rid):
         
         if rid not in self.page_directory:
             raise ValueError("RID cannot be found in page directory.")
 
-        page_range_index, base_page_index, physical_page_index = self.page_directory[rid] # Find the page range that contains the RID in the page directory
-        base_page = self.page_ranges[page_range_index].base_pages[base_page_index]
+        page_range_index, logical_page_index, physical_page_index = self.page_directory[rid]
+        base_page = self.page_ranges[page_range_index].base_pages[logical_page_index]
         record = [physical_page[physical_page_index] for physical_page in base_page.physical_pages]
 
         # record_metadata = record[:4]
@@ -58,24 +54,36 @@ class Table:
         rid = self.next_rid
         self.next_rid += 1
 
+        page_range_index = -1
 
-        # Stores index data for respective record ID
-        page_range_index = self.page_ranges[...]
-        base_page_index, physical_page_index = ()
+        for i, page_range in enumerate(self.page_ranges):
+            if page_range.has_capacity():
+                page_range_index = i
+                break
+        
+        # If no more pages, create new page range
+        if page_range_index == -1:
+            new_page_range = PageRange(self.num_columns)
+            self.page_ranges.append(new_page_range)
+            page_range_index = len(self.page_ranges) - 1
+
+        base_page_index, physical_page_index = new_page_range.write_record(record_data)
         self.page_directory[rid] = (page_range_index, base_page_index, physical_page_index)
-        
-        page_ranges
-
-        LogicalPage()
-        
-        pass
 
     def update_record(self, rid, record_data):
+        rid = self.next_rid
+        self.next_rid += 1
+
+        for i, page_range in enumerate(self.page_ranges):
+            if page_range.has_capacity():
+                page_range_index = i
+                
         pass
     
     # For now just mark as deleted, will be fully implemented with __merge(self)
     def delete_record(self, rid):
-        pass
+        page_range_index, base_page_index, physical_page_index = self.page_directory[rid]
+        
 
     def __merge(self):
         print("merge is happening")

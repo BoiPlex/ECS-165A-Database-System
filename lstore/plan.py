@@ -1,7 +1,7 @@
 
 """
 
-Datbase
+Database
 - Table[] size: infinite
 
 Table
@@ -17,5 +17,15 @@ logical_page (base_page or tail_page)
 physical_page (4096 bytes)
 - 512 records of 8 bytes
 
+
+Buffer pool Management
+- create pages 
+- track pages in memory
+
+- page_directory & buffer pool files 
+
+    page_directory: 
+
+    buffer_pool
 
 """

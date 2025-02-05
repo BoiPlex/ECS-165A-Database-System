@@ -1,5 +1,5 @@
-from lstore.config import Config
-from lstore.physical_page import PhysicalPage
+from config import Config
+from physical_page import PhysicalPage
 # Represents either a base page or tail page (each set of columns), base/tail page is effectively a row
 class LogicalPage:
     
@@ -23,14 +23,14 @@ class LogicalPage:
         if not self.has_capacity():
             raise Exception("Cannot write, this logical page is full")
 
-        for physical_page in self.physical_pages:
-            physical_page.create(record) # Can raise Error
+        for i in range(self.num_columns):
+            physical_page = self.physical_pages[i]
+            physical_page.create(record[i]) # Can raise Error
         self.num_records += 1
 
     def update_record(self, logical_index, record):
         for physical_page in self.physical_pages:
             physical_page.update(logical_index, record) # Can raise Error
     
-    def delete_record(self, logical_index):
+    def mark_to_delete_record(self, logical_index):
         self.physical_pages[Config.INDIRECTION_COLUMN].update(logical_index, -1) # Can raise Error
-        self.num_records -= 1
