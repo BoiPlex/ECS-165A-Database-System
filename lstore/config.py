@@ -11,3 +11,32 @@ class Config:
     SCHEMA_ENCODING_COLUMN = 3
 
     NUM_META_COLUMNS = 4
+
+    # Used to pick record type (base or tail)
+    BASE_RECORD = 0
+    TAIL_RECORD = 1
+
+"""
+Indirection col: Points to tail record change (when creating, points to itself and should be same as RID. When updated (record update created in tail page), should point to that new record)
+- Base record points to itself (on create)
+- Tail record points to itself (on create)
+- Update base record when tail record is created
+
+RID col
+    - Stores record ID
+
+Timestamp col
+    - Stores timestamp of latest change
+
+Schema encoding col
+    - "Each base record also contains a schema encoding column. This is a bit vector with one
+        bit per column that stores information about the updated state of each column. In the
+        base records, the schema encoding will include a 0 bit for all the columns that have not
+        yet been updated and a 1 bit for those that have been updated. This helps optimize
+        queries by determining whether we need to follow the lineage or not. In non-cumulative
+        tail records, the schema encoding serves to distinguish between columns with updated
+        values and those with NULL values"
+- Initialize to 0
+
+
+"""

@@ -11,25 +11,33 @@ class PhysicalPage:
     # def has_capacity(self):
     #     return self.num_records < self.MAX_RECORDS
     
-    def read(self, index):
-        if index >= self.num_records | index < 0:
+    def read(self, offset_index):
+        if offset_index >= self.num_records | offset_index < 0:
             raise IndexError("Index is out of bounds, please enter a valid index.")
         
-        offset = index * self.RECORD_SIZE
-        return int.from_bytes(self.data[offset:offset + self.RECORD_SIZE], byteorder='big')
+        offset = offset_index * self.RECORD_SIZE
+        return int.from_bytes(self.data[offset: (offset + self.RECORD_SIZE)], byteorder='big')
 
-    def write(self, index, value):
+    def create(self, value):
+        offset_index = self.num_records * self.RECORD_SIZE # Compute offset and insert value
+        
+        self.update_value(self.num_records, value) # Can raise error
+
+        self.num_records += 1 # Increments number of records stored for each record written
+        return offset_index
+
+    def update_value(self, offset_index, value):
         if not (-2**63 <= value < 2**63): # Checks to see if value lies outside size of 64 bit integer
             raise ValueError("Value is larger than 64 bit int can store.")
-        
-        value_bytes = value.to_bytes(self.RECORD_SIZE, byteorder='big') # Convert value to bytes (big-endian format)
-        
-        self.data[index : (index + self.RECORD_SIZE)] = value_bytes
 
-        return index
+        # self.data[offset_index : (offset_index + self.RECORD_SIZE)] = bytearray(self.RECORD_SIZE) 
+        start_index = offset_index*self.RECORD_SIZE
+        value_bytes = value.to_bytes(self.RECORD_SIZE, byteorder='big') # Convert value to bytes (big-endian format)
+        self.data[start_index : (start_index + self.RECORD_SIZE)] = value_bytes
+        
     
-    # TODO: Delete function for when a merge occurs. Fix other functions to accommodate this
-    def delete(self, index):
+    # TODO: MILESTONE 2: Delete function for when a merge occurs. Fix other functions to accommodate this
+    def delete(self, offset_index):
         pass
 
 
