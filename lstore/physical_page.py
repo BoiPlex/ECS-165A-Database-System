@@ -19,9 +19,9 @@ class PhysicalPage:
         return int.from_bytes(self.data[offset: (offset + self.RECORD_SIZE)], byteorder='big')
 
     def create(self, value):
-        offset_index = self.num_records * self.RECORD_SIZE # Compute offset and insert value
-        
-        self.update_value(self.num_records, value) # Can raise error
+        offset_index = self.num_records
+
+        self.update_value(offset_index, value) # Can raise error
 
         self.num_records += 1 # Increments number of records stored for each record written
         return offset_index

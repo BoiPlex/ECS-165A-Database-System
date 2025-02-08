@@ -7,13 +7,21 @@ from config import Config
 # ----------------------------------------------------------------
 # TEST: Table
 
-table = Table("Bruh", 3, 0)
+# table = Table("Bruh", 3, 0)
 
-print(table.create_record([1, 2, 3]))
+# # New base records
+# print("Create:", table.create_record([1, 2, 3]))
+# print("Create:", table.create_record([4, 5, 6]))
 
-# Continue Table tests here...
+# # New tail record
+# print("Update:", table.update_record(2, 0, 69))
 
-# print(table.read_record(1))
+# # Mark record to delete
+# print("Delete:", table.delete_record(1))
+
+# # Read base records
+# print("Read:", table.read_record(1))
+# print("Read:", table.read_record(2))
 
 # ----------------------------------------------------------------
 # TEST: PageRange
@@ -53,13 +61,12 @@ print(table.create_record([1, 2, 3]))
 # TP.create_record([7, 5, 1])
 # TP.create_record([239, 23, 964])
 
-# TP.update_record(0, 1, 69)
+# TP.update_record_value(0, 1, 69)
 # TP.mark_to_delete_record(0)
 
 # # First 5 offsets/records/rows
 # for i in range(5):
 #     print(TP.read_record(i))
-
 
 # ----------------------------------------------------------------
 # TEST: PhysicalPage
@@ -71,11 +78,7 @@ print(table.create_record([1, 2, 3]))
 # col.create(3)
 # col.create(34)
 
-# col.write(1, 2)
+# col.update_value(1, 2)
 
 # for i in range(5):
 #     print(col.read(i))
-
-# for i, num in enumerate(col.data):
-#     print(f"{i}: {num}")
-

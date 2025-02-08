@@ -5,7 +5,7 @@ from page_range import PageRange
 from logical_page import LogicalPage
 from time import time
 
-from BTrees.OOBTree import BTree
+# from BTrees.OOBTree import BTree
 
 
 class Record:
@@ -35,7 +35,8 @@ class Table:
 
         self.page_ranges = [PageRange(self.num_columns)]
 
-    # Reads base record
+    # Reads base record (includes meta-columns)
+    # rid starts at 1 as defined above
     def read_record(self, rid):
         if rid not in self.page_directory:
             return False # Invalid base record rid
@@ -72,14 +73,17 @@ class Table:
         return True # Record was created
 
     # Update a record's column value (either creates new tail record or updates existing tail record)
-    def update_record(self, base_rid, column_index, column_value):
+    # nonmeta_column_index shouldn't account for the meta columns (0 for first non-meta column)
+    def update_record(self, base_rid, nonmeta_column_index, column_value):
         if base_rid not in self.page_directory:
             return False # Invalid base record rid
+    
+        column_index = nonmeta_column_index + Config.NUM_META_COLUMNS
 
         # Check if the base record has a tail record that already exists
         page_range_index, base_page_index, offset_index = self.page_directory[base_rid]
         tail_rid = self.page_ranges[page_range_index].base_pages[base_page_index].physical_pages[Config.INDIRECTION_COLUMN].read(offset_index)
-        if tail_rid in self.page_directory:
+        if tail_rid != base_rid and tail_rid in self.page_directory:
             # Update existing tail record
             page_range_index, tail_page_index, offset_index = self.page_directory[tail_rid]
             self.page_ranges[page_range_index].update_tail_record_value(tail_page_index, offset_index, column_index, column_value)
@@ -89,8 +93,12 @@ class Table:
             tail_rid = self.next_rid
             self.next_rid += 1
 
+            # Directly update base record's indirection column to point to new tail record
+            self.page_ranges[page_range_index].base_pages[base_page_index].physical_pages[Config.INDIRECTION_COLUMN].update_value(offset_index, tail_rid)
+
+            # Create new tail record with given column value
             record_nonmeta_columns = [0] * (self.num_columns - Config.NUM_META_COLUMNS)
-            record_nonmeta_columns[column_index] = column_value
+            record_nonmeta_columns[nonmeta_column_index] = column_value
             record_columns = self.__initialize_record_columns(tail_rid, record_nonmeta_columns)
 
             self.page_ranges[page_range_index].create_record(Config.TAIL_RECORD, record_columns)
@@ -126,13 +134,13 @@ class Table:
         record_columns = []
 
         # Initialize meta columns
-        record_columns[Config.INDIRECTION_COLUMN] = rid
-        record_columns[Config.RID_COLUMN] = rid
-        record_columns[Config.TIMESTAMP_COLUMN] = time()
-        record_columns[Config.SCHEMA_ENCODING_COLUMN] = 0
+        record_columns.append(rid) # INDIRECTION_COLUMN
+        record_columns.append(rid) # RID_COLUMN
+        record_columns.append(int(time())) # TIMESTAMP_COLUMN
+        record_columns.append(0) # SCHEMA_ENCODING_COLUMN
 
         # Initialize non-meta columns
-        record_columns.append(record_nonmeta_columns)
+        record_columns.extend(record_nonmeta_columns)
 
         return list(record_columns) # Return new list (not reference)
  
