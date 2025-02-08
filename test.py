@@ -1,8 +1,8 @@
-from physical_page import PhysicalPage
-from logical_page import LogicalPage
-from page_range import PageRange
-from table import Table
-from config import Config
+from lstore.physical_page import PhysicalPage
+from lstore.logical_page import LogicalPage
+from lstore.page_range import PageRange
+from lstore.table import Table
+from lstore.config import Config
 
 # ----------------------------------------------------------------
 # TEST: Table

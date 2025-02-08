@@ -1,5 +1,5 @@
-from logical_page import LogicalPage
-from config import Config
+from lstore.logical_page import LogicalPage
+from lstore.config import Config
 
 class PageRange:
     def __init__(self, num_columns):

@@ -1,8 +1,8 @@
-from index import Index
-from physical_page import PhysicalPage
-from config import Config
-from page_range import PageRange
-from logical_page import LogicalPage
+from lstore.index import Index
+from lstore.physical_page import PhysicalPage
+from lstore.config import Config
+from lstore.page_range import PageRange
+from lstore.logical_page import LogicalPage
 from time import time
 
 # from BTrees.OOBTree import BTree
@@ -23,7 +23,9 @@ class Table:
     """
     def __init__(self, name, num_columns, key):
         self.name = name
-        self.key = key
+
+        self.key = key + Config.NUM_META_COLUMNS
+
         self.num_columns = num_columns + Config.NUM_META_COLUMNS
         
         # Maps RID -> (page_range_index, logical_page-index, offset_index)

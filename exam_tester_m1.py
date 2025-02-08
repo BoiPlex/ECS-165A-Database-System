@@ -8,7 +8,7 @@ db = Database()
 #   Student Id and 4 grades
 #   The first argument is name of the table
 #   The second argument is the number of columns
-#   The third argument is determining the which columns will be primay key
+#   The third argument is determining the which columns will be primary key
 #       Here the first column would be student id and primary key
 grades_table = db.create_table('Grades', 5, 0)
 

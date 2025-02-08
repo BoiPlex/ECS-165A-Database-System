@@ -1,5 +1,5 @@
-from config import Config
-from physical_page import PhysicalPage
+from lstore.config import Config
+from lstore.physical_page import PhysicalPage
 # Represents either a base page or tail page (each set of columns), base/tail page is effectively a row
 class LogicalPage:
     
