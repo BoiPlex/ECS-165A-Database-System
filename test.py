@@ -3,6 +3,8 @@ from lstore.logical_page import LogicalPage
 from lstore.page_range import PageRange
 from lstore.table import Table
 from lstore.config import Config
+from lstore.index import Index
+
 
 # ----------------------------------------------------------------
 # TEST: Table
@@ -82,3 +84,7 @@ from lstore.config import Config
 
 # for i in range(5):
 #     print(col.read(i))
+# ----------------------------------------------------------------
+#TEST: Index
+
+

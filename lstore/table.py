@@ -153,3 +153,10 @@ class Table:
             if page_range.has_capacity():
                 return page_range_index
         return -1
+    
+    # Gets location of record from page directory
+    # Accesses columns physical page and gets value
+    # Used for index.py
+    def get_column_value(self, rid, column):
+        page_range_index, logical_page_index, offset_index = self.page_directory[rid]
+        return self.page_ranges[page_range_index].read_column(logical_page_index, column, offset_index)
