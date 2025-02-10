@@ -18,14 +18,24 @@ query.insert(1, 4, 18)
 query.insert(2, 5, 18)
 query.insert(3, 6, 20)
 
-# Select
-record_list = query.select(18, 2, [1, 1, 1])
+query.update(1, None, 12, 13)
+query.update(1, None, 6, 9)
+query.update(2, 4, None, 2)
+
+# record_list = query.select_version(1, 0, [1, 1, 1], -2)
+record_list = query.select_version(2, 0, [1, 1, 1], 0)
 for record in record_list:
     print(record.columns)
 
-# Sum
-sum = query.sum(1, 2, 2)
-print(sum)
+
+# # Select
+# record_list = query.select(18, 2, [1, 1, 1])
+# for record in record_list:
+#     print(record.columns)
+
+# # Sum
+# sum = query.sum(1, 2, 2)
+# print(sum)
 
 # ----------------------------------------------------------------
 # TEST: Table

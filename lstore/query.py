@@ -49,7 +49,7 @@ class Query:
         # TODO
         rid_list = self.table.index.locate(search_key_index, search_key)
 
-        record_list = [self.table.read_record(rid) for rid in rid_list]
+        record_list = [self.table.read_record(Config.BASE_RECORD, rid) for rid in rid_list]
         for record in record_list:
             columns_result = []
             for column_index, should_return_column in enumerate(projected_columns_index):
@@ -82,14 +82,9 @@ class Query:
     """
     def update(self, primary_key, *columns):
         base_rid = self.table.index.key_to_rid(self.table.key, primary_key)
-        successCount = 0
-        failureCount = 0
-        for column_index, column_value in enumerate(columns):
-            if column_value == None:
-                continue
-            success = self.table.update_record(base_rid, column_index, column_value)
-            if not success:
-                return False
+        success = self.table.update_record(base_rid, columns)
+        if not success:
+            return False
         return True
 
     
@@ -130,7 +125,7 @@ class Query:
 
         record_list = []
         for rid in rid_list:
-            record = self.table.read_record(rid)
+            record = self.table.read_record(Config.BASE_RECORD, rid)
             record_list.append(record)
         
         record_list = self.get_record_list_lineage(record_list, relative_version)
@@ -165,12 +160,23 @@ class Query:
 
     def get_record_list_lineage(self, record_list, relative_version):
         new_record_list = list(record_list)
-        for record in new_record_list:
-            current_version = relative_version
-            while (current_version < 0):
-                record = self.table.read_record(self.table.get_next_lineage_rid(record.rid))
+
+        for i, record in enumerate(record_list):
+            record_type = Config.BASE_RECORD
+
+            current_rid = record.rid
+            next_rid = next_rid = self.table.get_next_lineage_rid(record_type, current_rid)
+
+            lineage_stack = [record]
+            while current_rid != next_rid:
+                record_type = Config.TAIL_RECORD
+                new_record = self.table.read_record(Config.TAIL_RECORD, next_rid)
                 if record is False:
                     return False
-                current_version += 1
-        
-        return record_list
+                current_rid = next_rid
+                lineage_stack.append(new_record)
+            
+            stack_index = max(relative_version - 1, -len(lineage_stack))
+            new_record_list[i] = lineage_stack[stack_index]
+
+        return new_record_list
