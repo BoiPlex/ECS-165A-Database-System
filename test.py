@@ -1,10 +1,31 @@
 from lstore.physical_page import PhysicalPage
 from lstore.logical_page import LogicalPage
 from lstore.page_range import PageRange
-from lstore.table import Table
-from lstore.config import Config
+from lstore.table import Table, Record
+from lstore.db import Database
 from lstore.index import Index
+from lstore.query import Query
+from lstore.config import Config
 
+# ----------------------------------------------------------------
+# TEST: Query
+db = Database()
+table = db.create_table("Bruh", 3, 0)
+query = Query(table)
+
+# Insert
+query.insert(1, 4, 18)
+query.insert(2, 5, 18)
+query.insert(3, 6, 20)
+
+# Select
+record_list = query.select(18, 2, [1, 1, 1])
+for record in record_list:
+    print(record.columns)
+
+# Sum
+sum = query.sum(1, 2, 2)
+print(sum)
 
 # ----------------------------------------------------------------
 # TEST: Table

@@ -15,6 +15,9 @@ class PageRange:
     def read_record(self, record_type, logical_page_index, offset_index):
         logical_page = self.get_logical_pages(record_type)[logical_page_index]
         return logical_page.read_record(offset_index)
+
+    def read_column(self, logical_page_index, column_index, offset_index):
+        pass
     
     # Create NEW record (base or tail)
     def create_record(self, record_type, record_columns):

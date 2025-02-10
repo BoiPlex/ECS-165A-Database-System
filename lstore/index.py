@@ -2,23 +2,40 @@
 A data structure holding indices for various columns of a table. Key column should be indexed by default, other columns can be indexed through this object. Indices are usually B-Trees, but other data structures can be used as well.
 """
 from BTrees.OOBTree import OOBTree
+# from sortedcontainers import SortedDict
+# index = SortedDict()
 
+# print(dir(BTrees))
 class Index:
 
     def __init__(self, table):
         self.indices = [OOBTree() for _ in range(table.num_columns)] 
         self.table = table
+    
+
+    """
+    # Returns the rid of the record of the given key value. Returns -1 if not found.
+    """
+    def key_to_rid(self, key_column, key_value):
+        rid_list = self.table.index.locate(key_column, key_value)
+        if not rid_list:
+            return -1
+        return rid_list[0]
+       
 
     """
     # returns the location of all records with the given value on column "column"
     """
 
-    def locate(self, column, value): 
-        if self.indices[column] is not None and value in self.indices[column]: 
-            rid = self.indices[column][value]
-            return rid
+    def locate(self, column, value):
+        rid_list = []
         
-        return -1   
+        if self.indices[column] is not None and value in self.indices[column]:
+            rid_list.extend(self.indices[column][value])
+            # for rid in self.indices[column][value]:
+            #     rid_list.append(self.indices[column][value])
+        
+        return rid_list
         
 
     """
@@ -39,14 +56,11 @@ class Index:
     # optional: Creates index on target column in the table. Searches for all RIDs mapping it's column values to their each RID later storing them 
     """
 
-    def create_index(self, columns):
-        for column in columns:
-            for rid in self.table.page_directory:
-                value = self.table.get_column_value(rid,column) 
-                if value not in self.indices[column]: # Creates new entries for values that aren't in the index
-                    self.indices[column][value]=[]
-                self.indices[column][value].append(rid)  
-            
+    def create_index(self, rid, columns):
+        for column_index, column_value in enumerate(columns):
+            if column_value not in self.indices[column_index]: # Creates new entries for values that aren't in the index
+                self.indices[column_index][column_value] = []
+            self.indices[column_index][column_value].append(rid)
             
         
     """
