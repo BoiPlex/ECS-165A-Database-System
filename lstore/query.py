@@ -46,7 +46,6 @@ class Query:
     # Assume that select will never be called on a key that doesn't exist
     """
     def select(self, search_key, search_key_index, projected_columns_index):
-        # TODO
         rid_list = self.table.index.locate(search_key_index, search_key)
 
         record_list = [self.table.read_record(Config.BASE_RECORD, rid) for rid in rid_list]
@@ -97,7 +96,6 @@ class Query:
     # Returns False if no record exists in the given range
     """
     def sum(self, start_range, end_range, aggregate_column_index):
-        # TODO
         rid_list = self.table.index.locate_range(start_range, end_range, self.table.key)
         if len(rid_list) == 0:
             return False
@@ -180,3 +178,54 @@ class Query:
             new_record_list[i] = lineage_stack[stack_index]
 
         return new_record_list
+
+    """
+    CUSTOM METHOD: MAX (aggregation)
+    """
+    def max(self, start_range, end_range, aggregate_column_index):
+        rid_list = self.table.index.locate_range(start_range, end_range, self.table.key)
+        if len(rid_list) == 0:
+            return False
+
+        max_value = 0
+        for rid in rid_list:
+            value = self.table.get_column_value_nonmeta(rid, aggregate_column_index)
+            max_value = max(value, max_value)
+            
+        return max_value
+
+    """
+    CUSTOM METHOD: MIN (aggregation)
+    """
+    def min(self, start_range, end_range, aggregate_column_index):
+        rid_list = self.table.index.locate_range(start_range, end_range, self.table.key)
+        if len(rid_list) == 0:
+            return False
+
+        min_value = 0
+        for rid in rid_list:
+            cur_value = self.table.get_column_value_nonmeta(rid, aggregate_column_index)
+            min_value = min(cur_value, min_value)
+            
+        return max_value
+    
+    """
+    CUSTOM METHOD: COUNT (aggregation)
+    """
+    def count(self, start_range, end_range, aggregate_column_index):
+        rid_list = self.table.index.locate_range(start_range, end_range, self.table.key)
+        return len(rid_list)
+
+    """
+    CUSTOM METHOD: AVG (aggregation)
+    """
+    def avg(self, start_range, end_range, aggregate_column_index):
+        rid_list = self.table.index.locate_range(start_range, end_range, self.table.key)
+        if len(rid_list) == 0:
+            return False
+
+        total_value = 0
+        for rid in rid_list:
+            total_value += self.table.get_column_value_nonmeta(rid, aggregate_column_index)
+            
+        return total_value / len(rid_list)
