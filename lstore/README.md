@@ -7,16 +7,16 @@ Extra Changes: We added 4 new aggregation methods to query.py: max, min, count, 
 Attribution section:
 - Karim Shami:
     - 25%
-    - System Architect. Designed the data model and querying. Worked on the data model
+    - System Architect
 - Leif Good-Olson:
     - 25%
-    - Data Model Developer. Worked on the data model
+    - Data Model Developer
 - Matthew Abalos:
     - 20%
-    - Bufferpool Management Developer: Worked on the indexing
+    - Bufferpool Management Developer
 - Sri Lakshmi:
     - 15%
-    - Query Interface Developer: Worked on the querying operations
+    - Query Interface Developer
 - Kavya Sasikumar:
     - 15%
-    - Tester. Tested the code to work for the autograder
+    - Tester
