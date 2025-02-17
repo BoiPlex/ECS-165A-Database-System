@@ -10,13 +10,34 @@
 ## Disk
 File structure:
 - DB dir (contains tables) (dir name is in the path param)
-    - table 0 dir (contains table.columns columns) (dir name is table.name)
-        - table.hdr (stores table.py's key and num_columns)
-???? Unsure of the disk file structure. You should be storing all physical pages (of both base and tail) and be able to read it again when loading data from disk. Possibly call bufferpool from physical_page.py unless there's a better option
+    - table dir (dir name is table.name)
+        - table.hdr (stores table.py's key, num_columns, and page_directory)
+        - page_ranges dir (contains page ranges)
+            - 0 dir (page range 0)
+                - page_range.hdr (stores page_range.py's num_base_records)
+                - base_pages dir (contains base pages)
+                    - base_page.hdr (stores logical_page's num_records)
+                    - physical_pages dir (contains physical pages)
+                        - 0 dir (physical page 0, aka column 0)
+                            - physical_page.hdr (stores physical_page's num_records)
+                            - physical_page.data (stores physical_page's data bytearray)
+                        - 1 dir...etc
+                - tail_pages dir (similar to base_pages di)
+                    - tail_page.hdr (stores logical_page's num_records)
+                    - physical_pages dir (contains physical pages)
+                        - 0 dir (physical page 0, aka column 0)
+                            - physical_page.hdr (stores physical_page's num_records)
+                            - physical_page.data (stores physical_page's data bytearray)
+                        - 1 dir...etc
+            - 1 dir...etc
+    - table dir...etc
+
+Must be able to create table, write to disk, close program, open program, read from disk, and fully initialize everything in table.py
 
 The db.py functions:
 - db.open()
     - Check the given path and read the db dir, create it if it doesn't exist
+    - Make sure the existing tables are read properly
 - db.close()
     - Write everything to the db dir (save everything onto disk)
 - db.create_table()
