@@ -7,7 +7,7 @@
 - Main thread (what the user runs)
 - Merging thread (starts when initializing table.py)
 
-## Disk
+## Disk Model
 File structure:
 - DB dir (contains tables) (dir name is in the path param)
     - table dir (dir name is table.name)
@@ -62,15 +62,14 @@ write_page(record_type, rid, physical_page)
 - use rid to correctly locate page's location in disk, write the physical_page
 
 ## Bufferpool
-The bufferpool has Config.NUM_FRAMES frames
+The bufferpool has Config.NUM_FRAMES frames, each frame containing a physical page
 Initialized in db.open()
 
 Where:
 - bufferpool.py sits in the layer between logical_page and physical_page
-- must expose request_page()
+- must expose request_page() so that logical page can call it
 
-bufferpool.py
-- expose 
+bufferpool.py stores the physical pages so that logical page can access them
 
 Frame
 - Each frame references a physical page
