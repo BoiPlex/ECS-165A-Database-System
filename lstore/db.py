@@ -23,7 +23,7 @@ class Database():
         if name in self.tables:
             return None
 
-        table = Table(name, num_columns, key_index)
+        table = Table(name, num_columns, key_index, self.bufferpool)
         self.tables[name] = table
         return table
 

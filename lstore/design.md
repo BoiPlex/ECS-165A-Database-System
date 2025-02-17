@@ -11,11 +11,8 @@
 File structure:
 - DB dir (contains tables) (dir name is in the path param)
     - table 0 dir (contains table.columns columns) (dir name is table.name)
-        - column 0 file
-        - column 1 file
-        - etc
-
-The 4 meta-columns aren't stored in disk
+        - table.hdr (stores table.py's key and num_columns)
+???? Unsure of the disk file structure. You should be storing all physical pages (of both base and tail) and be able to read it again when loading data from disk. Possibly call bufferpool from physical_page.py unless there's a better option
 
 The db.py functions:
 - db.open()
@@ -42,13 +39,19 @@ disk read/writes and the dictionary can be defined in db.py
 The bufferpool has Config.NUM_FRAMES frames
 Initialized in db.open()
 
+Where:
+- bufferpool.py sits in the layer between logical_page and physical_page
+- must expose request_page()
+
+bufferpool.py
+- expose 
+
 Frame
 - Each frame references a physical page
 - State: Can be full, dirty, or empty
 - Contains pages
 
 Replacement policy: Least-recently-used (LRU)
-- Keep track of 
 
 Write dirty frames to disk
 

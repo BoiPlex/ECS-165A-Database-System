@@ -4,8 +4,10 @@ from lstore.physical_page import PhysicalPage
 class LogicalPage:
     
     # num_columns should include the 4 meta-columns
-    def __init__(self, num_columns):
+    def __init__(self, num_columns, bufferpool):
         self.num_columns = num_columns
+        self.bufferpool = bufferpool
+
         self.physical_pages = [PhysicalPage() for i in range(num_columns)] # the columns of a record
         self.num_records = 0
     

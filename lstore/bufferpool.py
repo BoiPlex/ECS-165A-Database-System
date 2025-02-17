@@ -11,9 +11,5 @@ class Frame():
     def __init__(self):
         self.state # Full, dirty, or empty
 
-        # Physical page location
-        self.page_range_index
-        self.record_type
-        self.logical_page_index
-        self.physical_page_index
+        self.physical_page # Holds the in-memory physical page
         pass

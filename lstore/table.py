@@ -18,12 +18,11 @@ class Table:
     :param num_columns: int     #Number of Columns: all columns are integer
     :param key: int             #Index of table key in columns
     """
-    def __init__(self, name, num_columns, key):
+    def __init__(self, name, num_columns, key, bufferpool):
         self.name = name
-
         self.key = key # Key column index (doesn't include meta-columns)
-
         self.num_columns = num_columns
+        self.bufferpool = bufferpool
         
         # Maps RID -> (page_range_index, logical_page-index, offset_index)
         self.page_directory = {}
@@ -32,7 +31,7 @@ class Table:
         
         self.next_rid = 1 # RID of 0 is reserved to indicate deletion
 
-        self.page_ranges = [PageRange(self.num_columns + Config.NUM_META_COLUMNS)]
+        self.page_ranges = [PageRange(num_columns + Config.NUM_META_COLUMNS, bufferpool)]
 
     # Reads base/tail record (includes meta-columns)
     # rid starts at 1 as defined above

@@ -2,10 +2,12 @@ from lstore.logical_page import LogicalPage
 from lstore.config import Config
 
 class PageRange:
-    def __init__(self, num_columns):
+    def __init__(self, num_columns, bufferpool):
         self.num_columns = num_columns # Includes 4 meta columns
-        self.base_pages = [LogicalPage(num_columns) for i in range(16)] # Fixed
-        self.tail_pages = [LogicalPage(num_columns)] # Dynamic
+        self.bufferpool = bufferpool
+
+        self.base_pages = [LogicalPage(num_columns, bufferpool) for i in range(16)] # Fixed
+        self.tail_pages = [LogicalPage(num_columns, bufferpool)] # Dynamic
         self.num_base_records = 0 # (We don't keep track of tail records because they're theoretically infinite)
 
     def has_capacity(self):
@@ -32,7 +34,7 @@ class PageRange:
         # TAIL RECORD
         else:
             if not logical_pages[-1].has_capacity():
-                logical_pages.append(LogicalPage(self.num_columns))
+                logical_pages.append(LogicalPage(self.num_columns, self.bufferpool))
             logical_page_index = len(self.tail_pages) - 1 
         
         # Create base/tail record
