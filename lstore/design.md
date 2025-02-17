@@ -53,8 +53,13 @@ Column file
     - remember there are 16 physical pages per page range
     -   write the 16 physical pages every time a page range is created
 
-disk read/writes and the dictionary can be defined in db.py
-
+a disk class can be defined in db.py:
+read_db()
+- read existing db
+read_page(record_type, rid)
+- use rid to correctly locate page's location in disk, return physical_page
+write_page(record_type, rid, physical_page)
+- use rid to correctly locate page's location in disk, write the physical_page
 
 ## Bufferpool
 The bufferpool has Config.NUM_FRAMES frames
