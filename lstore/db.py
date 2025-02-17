@@ -7,7 +7,7 @@ class Database():
         self.tables = {}
         pass
 
-    # Not required for milestone1
+    # Checks the given path. The path could either already contain a db or one must be created
     def open(self, path):
         pass
     def close(self):
@@ -20,6 +20,9 @@ class Database():
     :param key: int             #Index of table key in columns
     """
     def create_table(self, name, num_columns, key_index):
+        if name in self.tables:
+            return None
+
         table = Table(name, num_columns, key_index)
         self.tables[name] = table
         return table
@@ -29,8 +32,10 @@ class Database():
     # Deletes the specified table
     """
     def drop_table(self, name):
-        if name in self.tables:
-            del self.tables[name]
+        if name not in self.tables:
+            return
+    
+        del self.tables[name]
 
     
     """

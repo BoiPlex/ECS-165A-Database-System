@@ -16,6 +16,10 @@ class Config:
     BASE_RECORD = 0
     TAIL_RECORD = 1
 
+    NUM_FRAMES = 500
+
+    NUM_UPDATES_FOR_MERGE = 500
+
 """
 Indirection col: Points to tail record change (when creating, points to itself and should be same as RID. When updated (record update created in tail page), should point to that new record)
 - Base record points to itself (on create)
