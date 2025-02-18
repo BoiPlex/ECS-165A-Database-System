@@ -61,23 +61,38 @@ read_page(record_type, rid)
 write_page(record_type, rid, physical_page)
 - use rid to correctly locate page's location in disk, write the physical_page
 
+
 ## Bufferpool
 The bufferpool has Config.NUM_FRAMES frames, each frame containing a physical page
 Bufferpool is initialized in db.open()
 
 bufferpool.py called by table.py's read/write functions to manage data between memory and disk
 
-must expose request_page() for loading a physical from disk to memory
+must expose request_page(rid) for loading a physical from disk to memory
+Also expose the following for pinning a frame/page:
+- start_transaction(rid)
+- finish_transaction(rid)
+
+must translate rid into the record's physical page location vars
+
+request_page(), Is page in pool?
+- Yes: acquire read lock, return frame's page
+- No: bring_page_into_pool(), is frame empty?
+    - Yes: get_page_from_disk(), acquire read lock, return frame's page
+    - No: evict existing frame based on replacement policy, replace it with desired page
+
+Replacement policy: Least-recently-used (LRU), don't evict pinned frames
 
 Frame
 - Each frame holds a physical page
     - physical page identified by its page_range_index, record_type, logical_page_index, physical_page_index
 - State: Can be full, dirty, or empty
+- Can be pinned or not
 - Contains pages
 
-Replacement policy: Least-recently-used (LRU)
-
 Write dirty frames to disk
+
+Useful slides: https://expolab.org/ecs165a-winter2024/top_presentations/M2/cowabungadb.pdf
 
 
 ## Merging
