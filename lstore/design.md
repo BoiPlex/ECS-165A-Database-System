@@ -63,16 +63,15 @@ write_page(record_type, rid, physical_page)
 
 ## Bufferpool
 The bufferpool has Config.NUM_FRAMES frames, each frame containing a physical page
-Initialized in db.open()
+Bufferpool is initialized in db.open()
 
-Where:
-- bufferpool.py sits in the layer between logical_page and physical_page
-- must expose request_page() so that logical page can call it
+bufferpool.py called by table.py's read/write functions to manage data between memory and disk
 
-bufferpool.py stores the physical pages so that logical page can access them
+must expose request_page() for loading a physical from disk to memory
 
 Frame
-- Each frame references a physical page
+- Each frame holds a physical page
+    - physical page identified by its page_range_index, record_type, logical_page_index, physical_page_index
 - State: Can be full, dirty, or empty
 - Contains pages
 
