@@ -14,16 +14,13 @@ table = db.create_table("Bruh", 3, 0)
 query = Query(table)
 
 # Insert
-query.insert(1, 4, 18)
-query.insert(2, 5, 18)
-query.insert(3, 6, 20)
+query.insert(1, 4, 18) # rid=1
 
-query.update(1, None, 12, 13)
-query.update(1, None, 6, 9)
-query.update(2, 4, None, 2)
+query.update(1, None, 12, 13) # rid=2
+query.update(1, None, 14, 15) # rid=3
+query.update(1, None, 16, 17) # rid=4
 
-# record_list = query.select_version(1, 0, [1, 1, 1], -2)
-record_list = query.select_version(2, 0, [1, 1, 1], 0)
+record_list = query.select_version(1, 0, [1, None, 1], 0)
 for record in record_list:
     print(record.columns)
 

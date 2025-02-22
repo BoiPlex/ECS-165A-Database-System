@@ -2,7 +2,7 @@ from lstore.config import Config
 
 class Bufferpool():
     def __init__(self):
-        self.frames = [Frame() for i in range(Config.NUM_FRAMES)]
+        # self.frames = [Frame() for i in range(Config.NUM_FRAMES)]
         pass
 
 

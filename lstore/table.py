@@ -31,7 +31,7 @@ class Table:
         
         self.next_rid = 1 # RID of 0 is reserved to indicate deletion
 
-        self.page_ranges = [PageRange(num_columns + Config.NUM_META_COLUMNS, bufferpool)]
+        self.page_ranges = [PageRange(num_columns + Config.NUM_META_COLUMNS)]
 
     # Reads base/tail record (includes meta-columns)
     # rid starts at 1 as defined above
@@ -49,10 +49,10 @@ class Table:
         
         return record
 
-    # Creates NEW base record
+    # Creates NEW base record (insert)
     def create_record(self, record_nonmeta_columns):
-        if len(record_nonmeta_columns) != self.num_columns:
-            return False # Record could not be created because it does not match the number of non-meta columns in the table
+        if len(record_nonmeta_columns) != self.num_columns or self.index.key_to_rid(self.key, record_nonmeta_columns[self.key]) != -1:
+            return False # Record could not be created
 
         page_range_index = self.find_free_page_range()
         if page_range_index < 0:
@@ -99,48 +99,36 @@ class Table:
 
         schema_encoding_column_value = self.page_ranges[page_range_index].base_pages[base_page_index].physical_pages[Config.SCHEMA_ENCODING_COLUMN].read(offset_index)
 
-        # Update base record's schema encoding column (FIX THIS)
+        # Update base record's schema encoding column
         for nonmeta_column_index, column_value in enumerate(record_nonmeta_columns):
             if column_value == None:
                 continue
             bit_column_index = self.num_columns - nonmeta_column_index - 1
             schema_encoding_column_value |= (1 << bit_column_index)
-
         self.page_ranges[page_range_index].base_pages[base_page_index].physical_pages[Config.SCHEMA_ENCODING_COLUMN].update_value(offset_index, schema_encoding_column_value)
 
-        # Lineage to get latest tail record (or could be base record if first update)
-        current_rid = base_rid
-        follow_rid = self.page_ranges[page_range_index].base_pages[base_page_index].physical_pages[Config.INDIRECTION_COLUMN].read(offset_index)
-        
-        record_type = Config.BASE_RECORD
-        while current_rid != follow_rid:
-            if follow_rid not in self.page_directory:
-                break
-            record_type = Config.TAIL_RECORD
+        # Get latest existing record
+        latest_rid = self.page_ranges[page_range_index].base_pages[base_page_index].physical_pages[Config.INDIRECTION_COLUMN].read(offset_index)
+        latest_record_type = Config.BASE_RECORD if latest_rid == base_rid else Config.TAIL_RECORD
 
-            page_range_index, tail_page_index, offset_index = self.page_directory[follow_rid]
-            current_rid = follow_rid
-            follow_rid = self.page_ranges[page_range_index].tail_pages[tail_page_index].physical_pages[Config.INDIRECTION_COLUMN].read(offset_index)
-        
-        # Update indirection of latest record
-        if record_type == Config.BASE_RECORD:
-            self.page_ranges[page_range_index].base_pages[base_page_index].physical_pages[Config.INDIRECTION_COLUMN].update_value(offset_index, tail_rid)
-        else:
-            self.page_ranges[page_range_index].tail_pages[tail_page_index].physical_pages[Config.INDIRECTION_COLUMN].update_value(offset_index, tail_rid)
-            
-        # Get latest record and update its column
-        record_copy = self.read_record(record_type, current_rid)
+        # Update base record's indirection column
+        self.page_ranges[page_range_index].base_pages[base_page_index].physical_pages[Config.INDIRECTION_COLUMN].update_value(offset_index, tail_rid) 
+
+        # Get latest existing record's data and update its column
+        record_copy =  self.read_record(latest_record_type, latest_rid)
         new_nonmeta_columns = record_copy.columns
         for nonmeta_column_index, column_value in enumerate(record_nonmeta_columns):
             if column_value is None:
                 continue
             new_nonmeta_columns[nonmeta_column_index] = column_value
 
-        # Create new tail record with given column value
-        record_columns = self.__initialize_record_columns(tail_rid, new_nonmeta_columns)
-        logical_page_index, offset_index = self.page_ranges[page_range_index].create_record(Config.TAIL_RECORD, record_columns)
         
-        # Update page directory
+        # Initialize the columns and set the indirection to previous record
+        record_columns = self.__initialize_record_columns(tail_rid, new_nonmeta_columns)
+        record_columns[Config.INDIRECTION_COLUMN] = latest_rid
+
+        # Create new tail record and ppdate page directory
+        logical_page_index, offset_index = self.page_ranges[page_range_index].create_record(Config.TAIL_RECORD, record_columns)
         self.page_directory[tail_rid] = (page_range_index, logical_page_index, offset_index)
         
         return True

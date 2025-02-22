@@ -1,5 +1,6 @@
 from lstore.table import Table
 from lstore.config import Config
+from lstore.bufferpool import Bufferpool
 
 class Database():
 
@@ -22,6 +23,8 @@ class Database():
     def create_table(self, name, num_columns, key_index):
         if name in self.tables:
             return None
+        
+        self.bufferpool = Bufferpool()
 
         table = Table(name, num_columns, key_index, self.bufferpool)
         self.tables[name] = table

@@ -71,7 +71,17 @@ class Query:
     """
     def select_version(self, search_key, search_key_index, projected_columns_index, relative_version):
         record_list = self.select(search_key, search_key_index, projected_columns_index)
-        return self.get_record_list_lineage(record_list, relative_version)
+        record_list = self.get_record_list_lineage(record_list, relative_version)
+    
+        # Filter by projected columns
+        for record in record_list:
+            columns_result = []
+            for column_index, should_return_column in enumerate(projected_columns_index):
+                if should_return_column == 1:
+                    columns_result.append(record.columns[column_index])
+            record.columns = columns_result
+        
+        return record_list
 
     
     """
@@ -160,24 +170,19 @@ class Query:
         new_record_list = list(record_list)
 
         for i, record in enumerate(record_list):
-            record_type = Config.BASE_RECORD
+            base_rid = record.rid
+            current_version = 0
+            current_rid = self.table.get_next_lineage_rid(Config.BASE_RECORD, record.rid) # Latest version (version 0)
 
-            current_rid = record.rid
-            next_rid = next_rid = self.table.get_next_lineage_rid(record_type, current_rid)
+            while current_version > relative_version and current_rid != base_rid:
+                current_rid = self.table.get_next_lineage_rid(Config.TAIL_RECORD, current_rid)
+                current_version -= 1
 
-            lineage_stack = [record]
-            while current_rid != next_rid:
-                record_type = Config.TAIL_RECORD
-                new_record = self.table.read_record(Config.TAIL_RECORD, next_rid)
-                if record is False:
-                    return False
-                current_rid = next_rid
-                lineage_stack.append(new_record)
-            
-            stack_index = max(relative_version - 1, -len(lineage_stack))
-            new_record_list[i] = lineage_stack[stack_index]
+            record_type = Config.BASE_RECORD if current_rid == base_rid else Config.TAIL_RECORD
+            new_record_list[i] = self.table.read_record(record_type, current_rid)
 
         return new_record_list
+
 
     """
     CUSTOM METHOD: MAX (aggregation)
@@ -207,7 +212,7 @@ class Query:
             cur_value = self.table.get_column_value_nonmeta(rid, aggregate_column_index)
             min_value = min(cur_value, min_value)
             
-        return max_value
+        return min_value
     
     """
     CUSTOM METHOD: COUNT (aggregation)
