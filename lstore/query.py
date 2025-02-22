@@ -48,15 +48,10 @@ class Query:
     def select(self, search_key, search_key_index, projected_columns_index):
         rid_list = self.table.index.locate(search_key_index, search_key)
 
-        record_list = [self.table.read_record(Config.BASE_RECORD, rid) for rid in rid_list]
-        for record in record_list:
-            columns_result = []
-            for column_index, should_return_column in enumerate(projected_columns_index):
-                if should_return_column == 1:
-                    columns_result.append(record.columns[column_index])
-            record.columns = columns_result
-        
-        return record_list
+        record_list = [self.table.read_record(Config.BASE_RECORD, rid) for rid in rid_list]        
+        record_list = self.get_record_list_lineage(record_list, 0)
+
+        return self.filter_by_projected_columns(record_list, projected_columns_index)
 
     
     """
@@ -72,16 +67,8 @@ class Query:
     def select_version(self, search_key, search_key_index, projected_columns_index, relative_version):
         record_list = self.select(search_key, search_key_index, projected_columns_index)
         record_list = self.get_record_list_lineage(record_list, relative_version)
-    
-        # Filter by projected columns
-        for record in record_list:
-            columns_result = []
-            for column_index, should_return_column in enumerate(projected_columns_index):
-                if should_return_column == 1:
-                    columns_result.append(record.columns[column_index])
-            record.columns = columns_result
         
-        return record_list
+        return self.filter_by_projected_columns(record_list, projected_columns_index)
 
     
     """
@@ -106,15 +93,7 @@ class Query:
     # Returns False if no record exists in the given range
     """
     def sum(self, start_range, end_range, aggregate_column_index):
-        rid_list = self.table.index.locate_range(start_range, end_range, self.table.key)
-        if len(rid_list) == 0:
-            return False
-
-        sum_value = 0
-        for rid in rid_list:
-            sum_value += self.table.get_column_value_nonmeta(rid, aggregate_column_index)
-            
-        return sum_value
+        return self.sum_version(start_range, end_range, aggregate_column_index, 0)
 
     
     """
@@ -182,6 +161,16 @@ class Query:
             new_record_list[i] = self.table.read_record(record_type, current_rid)
 
         return new_record_list
+
+
+    def filter_by_projected_columns(self, record_list, projected_columns_index):
+        for record in record_list:
+            columns_result = []
+            for column_index, should_return_column in enumerate(projected_columns_index):
+                if should_return_column == 1:
+                    columns_result.append(record.columns[column_index])
+            record.columns = columns_result
+        return record_list
 
 
     """

@@ -77,8 +77,8 @@ class Table:
     # Update a record's column value (either creates new tail record or updates existing tail record)
     # nonmeta_column_index shouldn't account for the meta columns (0 for first non-meta column)
     def update_record(self, base_rid, record_nonmeta_columns):
-        if base_rid not in self.page_directory:
-            return False # Invalid base record rid
+        if base_rid not in self.page_directory or len(record_nonmeta_columns) != self.num_columns or self.index.key_to_rid(self.key, record_nonmeta_columns[self.key]) != -1:
+            return False
 
         # # Check if the base record has a tail record that already exists
         # if tail_rid != base_rid and tail_rid in self.page_directory:
