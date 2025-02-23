@@ -18,21 +18,17 @@ File structure:
             - 0 dir (page range 0)
                 - page_range.hdr (stores page_range.py's num_base_records)
                 - base_pages dir (contains base pages)
-                    - base_page.hdr (stores logical_page's num_records)
-                    - physical_pages dir (contains physical pages)
-                        - 0 dir (physical page 0, aka column 0)
-                            - physical_page.hdr (stores physical_page's num_records)
-                            - physical_page.data (stores physical_page's data bytearray)
-                        - 1 dir...etc
-                - tail_pages dir (similar to base_pages di)
-                    - tail_page.hdr (stores logical_page's num_records)
-                    - physical_pages dir (contains physical pages)
-                        - 0 dir (physical page 0, aka column 0)
-                            - physical_page.hdr (stores physical_page's num_records)
-                            - physical_page.data (stores physical_page's data bytearray)
-                        - 1 dir...etc
-            - 1 dir...etc
-    - table dir...etc
+                    - 0 dir (base page 0)
+                        - base_page.hdr (stores logical_page's num_records)
+                        - physical_pages dir (contains physical pages)
+                            - 0 dir (physical page 0)
+                                - physical_page.hdr (stores physical_page's num_records)
+                                - physical_page.data (stores physical_page's data bytearray)
+                            - 1 dir (physical page 1)...etc
+                    - 1 dir (base page 1)...etc
+                - tail_pages dir (same format as base pages dir)
+            - 1 dir (page range 1)...etc
+    - table dir (with different name)...etc
 
 Must be able to create table, write to disk, close program, open program, read from disk, and fully initialize everything in table.py
 
@@ -46,14 +42,6 @@ The db.py functions:
     - Creates the table dir with its column files
 - db.drop_table()
     - Removes the table dir and its contents
-
-<!-- Column file
-- contains a list of physical pages
-    - each physical page is 4096 KB, with its position defined by disk_page_index
-    - you can read/write a physical page by using disk_page_index
-        - use a dictionary to map rid to disk_page_index
-    - remember there are 16 physical pages per page range
-    -   write the 16 physical pages every time a page range is created -->
 
 a disk class can be defined in db.py:
 read_db()

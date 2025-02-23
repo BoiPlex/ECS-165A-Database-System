@@ -6,8 +6,8 @@ class PageRange:
         self.num_columns = num_columns # Includes 4 meta columns
         self.bufferpool = bufferpool # Allows access to logical pages in the bufferpool
 
-        self.base_pages = [LogicalPage(num_columns) for i in range(16)] # Fixed
-        self.tail_pages = [LogicalPage(num_columns)] # Dynamic
+        # self.base_pages = [LogicalPage(num_columns) for i in range(16)] # Fixed
+        # self.tail_pages = [LogicalPage(num_columns)] # Dynamic
         self.num_base_records = 0 # (We don't keep track of tail records because they're theoretically infinite)
 
     def has_capacity(self):

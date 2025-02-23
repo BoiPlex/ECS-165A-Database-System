@@ -3,7 +3,6 @@ from collections import OrderedDict
 
 class Bufferpool():
     def __init__(self):
-        # self.frames = [Frame() for i in range(Config.NUM_FRAMES)]
         self.page_table = OrderedDict()
         self.frames = {}
         # self.frames = [Frame() for i in range(Config.NUM_FRAMES)]
@@ -50,7 +49,7 @@ class Bufferpool():
         if rid in self.frames:
             self.frames[rid].pinned = False
 
-# References a physical page
+# References a logical page
 class Frame():
     def __init__(self, physical_page):
         self.state = "Empty" # Full, dirty, or empty
