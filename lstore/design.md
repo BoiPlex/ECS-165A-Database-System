@@ -11,7 +11,9 @@
 File structure:
 - DB dir (contains tables) (dir name is in the path param)
     - table dir (dir name is table.name)
-        - table.hdr (stores table.py's key, num_columns, and page_directory)
+        - table.hdr (stores table.py's name, key, num_columns, next_rid)
+        - page_directory.json
+        - index (use pickle to serialize it)
         - page_ranges dir (contains page ranges)
             - 0 dir (page range 0)
                 - page_range.hdr (stores page_range.py's num_base_records)
@@ -45,13 +47,13 @@ The db.py functions:
 - db.drop_table()
     - Removes the table dir and its contents
 
-Column file
+<!-- Column file
 - contains a list of physical pages
     - each physical page is 4096 KB, with its position defined by disk_page_index
     - you can read/write a physical page by using disk_page_index
         - use a dictionary to map rid to disk_page_index
     - remember there are 16 physical pages per page range
-    -   write the 16 physical pages every time a page range is created
+    -   write the 16 physical pages every time a page range is created -->
 
 a disk class can be defined in db.py:
 read_db()
@@ -63,10 +65,10 @@ write_page(record_type, rid, physical_page)
 
 
 ## Bufferpool
-The bufferpool has Config.NUM_FRAMES frames, each frame containing a physical page
+The bufferpool has Config.NUM_FRAMES frames, each frame containing a logical page
 Bufferpool is initialized in db.open()
 
-bufferpool.py called by table.py's read/write functions to manage data between memory and disk
+<!-- bufferpool.py called by table.py's read/write functions to manage data between memory and disk -->
 
 must expose request_page(rid) for loading a physical from disk to memory
 Also expose the following for pinning a frame/page:
@@ -84,11 +86,10 @@ request_page(), Is page in pool?
 Replacement policy: Least-recently-used (LRU), don't evict pinned frames
 
 Frame
-- Each frame holds a physical page
-    - physical page identified by its page_range_index, record_type, logical_page_index, physical_page_index
+- Each frame holds a logical page
+    - logical page identified by its page_range_index, record_type, logical_page_index
 - State: Can be full, dirty, or empty
 - Can be pinned or not
-- Contains pages
 
 Write dirty frames to disk
 

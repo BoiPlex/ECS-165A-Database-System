@@ -2,8 +2,9 @@ from lstore.logical_page import LogicalPage
 from lstore.config import Config
 
 class PageRange:
-    def __init__(self, num_columns):
+    def __init__(self, num_columns, bufferpool):
         self.num_columns = num_columns # Includes 4 meta columns
+        self.bufferpool = bufferpool # Allows access to logical pages in the bufferpool
 
         self.base_pages = [LogicalPage(num_columns) for i in range(16)] # Fixed
         self.tail_pages = [LogicalPage(num_columns)] # Dynamic

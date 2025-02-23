@@ -31,7 +31,7 @@ class Table:
         
         self.next_rid = 1 # RID of 0 is reserved to indicate deletion
 
-        self.page_ranges = [PageRange(num_columns + Config.NUM_META_COLUMNS)]
+        # self.page_ranges = [PageRange(num_columns + Config.NUM_META_COLUMNS)]
 
     # Reads base/tail record (includes meta-columns)
     # rid starts at 1 as defined above

@@ -5,20 +5,26 @@ class Config:
     MAX_RECORDS_PER_PAGE_RANGE = MAX_RECORDS_PER_LOGICAL_PAGE * 16 # = 8192 records
     MAX_PAGE_RANGE_SIZE = MAX_RECORDS_PER_PAGE_RANGE * 8 # = 65536 bytes
 
+    # Metadata columns
+    NUM_META_COLUMNS = 4
     INDIRECTION_COLUMN = 0
     RID_COLUMN = 1
     TIMESTAMP_COLUMN = 2
     SCHEMA_ENCODING_COLUMN = 3
 
-    NUM_META_COLUMNS = 4
-
     # Used to pick record type (base or tail)
     BASE_RECORD = 0
     TAIL_RECORD = 1
 
+    # Bufferpool
     NUM_FRAMES = 500
+    EMPTY_STATE = 0
+    FULL_STATE = 1
+    DIRTY_STATE = 2
 
+    # Merging
     NUM_UPDATES_FOR_MERGE = 500
+
 
 """
 Indirection col: Points to tail record change (when creating, points to itself and should be same as RID. When updated (record update created in tail page), should point to that new record)
