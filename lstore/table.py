@@ -210,13 +210,15 @@ class Table:
                         _, base_page_index, base_offset_index = self.page_directory[base_rid]
                         # base_record = self.read_record(Config.BASE_RECORD, rid, include_metacolumns=True)
                         latest_record = self.read_record(Config.TAIL_RECORD, latest_update_rid, include_metacolumns=True)
-                        latest_columns = latest_record.columns # New reference, can modify
+                        latest_columns = latest_record.columns # New reference obj, can modify
 
-                        # Reverse engineer from tail record to base record
+                        # Reverse engineer from tail record to new base record:
                         latest_columns[Config.INDIRECTION_COLUMN] = base_rid
                         latest_columns[Config.RID_COLUMN] = base_rid # change tail rid to base rid
                         latest_columns[Config.SCHEMA_ENCODING_COLUMN] = 0
+                        # TIMESTAMP_COLUMN stays as tail record's
                         latest_columns[Config.TAIL_PAGE_SEQUENCE_COLUMN].update_value(latest_update_rid)
+                        # Data columns stay as tail record's
                         
                         # Allocate new page range
                         new_page_range_index = self.find_free_page_range()
