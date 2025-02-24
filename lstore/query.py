@@ -46,12 +46,7 @@ class Query:
     # Assume that select will never be called on a key that doesn't exist
     """
     def select(self, search_key, search_key_index, projected_columns_index):
-        rid_list = self.table.index.locate(search_key_index, search_key)
-
-        record_list = [self.table.read_record(Config.BASE_RECORD, rid) for rid in rid_list]        
-        record_list = self.get_record_list_lineage(record_list, 0)
-
-        return self.filter_by_projected_columns(record_list, projected_columns_index)
+        return self.select_version(search_key, search_key_index, projected_columns_index, 0)
 
     
     """
@@ -65,7 +60,8 @@ class Query:
     # Assume that select will never be called on a key that doesn't exist
     """
     def select_version(self, search_key, search_key_index, projected_columns_index, relative_version):
-        record_list = self.select(search_key, search_key_index, projected_columns_index)
+        rid_list = self.table.index.locate(search_key_index, search_key)
+        record_list = [self.table.read_record(Config.BASE_RECORD, rid) for rid in rid_list]        
         record_list = self.get_record_list_lineage(record_list, relative_version)
         
         return self.filter_by_projected_columns(record_list, projected_columns_index)
@@ -100,7 +96,7 @@ class Query:
     :param start_range: int         # Start of the key range to aggregate 
     :param end_range: int           # End of the key range to aggregate 
     :param aggregate_columns: int  # Index of desired column to aggregate
-    :param relative_version: the relative version of the record you need to retreive.
+    :param relative_version: the relative version of the record you need to retrieve.
     # this function is only called on the primary key.
     # Returns the summation of the given range upon success
     # Returns False if no record exists in the given range
@@ -152,6 +148,7 @@ class Query:
             base_rid = record.rid
             current_version = 0
             current_rid = self.table.get_next_lineage_rid(Config.BASE_RECORD, record.rid) # Latest version (version 0)
+            
 
             while current_version > relative_version and current_rid != base_rid:
                 current_rid = self.table.get_next_lineage_rid(Config.TAIL_RECORD, current_rid)

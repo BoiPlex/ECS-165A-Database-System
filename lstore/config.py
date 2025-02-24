@@ -5,12 +5,15 @@ class Config:
     MAX_RECORDS_PER_PAGE_RANGE = MAX_RECORDS_PER_LOGICAL_PAGE * 16 # = 8192 records
     MAX_PAGE_RANGE_SIZE = MAX_RECORDS_PER_PAGE_RANGE * 8 # = 65536 bytes
 
+    NUM_BASE_PAGES = 16
+
     # Metadata columns
-    NUM_META_COLUMNS = 4
+    NUM_META_COLUMNS = 5
     INDIRECTION_COLUMN = 0
     RID_COLUMN = 1
     TIMESTAMP_COLUMN = 2
     SCHEMA_ENCODING_COLUMN = 3
+    TAIL_PAGE_SEQUENCE_COLUMN = 4
 
     # Used to pick record type (base or tail)
     BASE_RECORD = 0
@@ -18,9 +21,6 @@ class Config:
 
     # Bufferpool
     NUM_FRAMES = 500
-    EMPTY_STATE = 0
-    FULL_STATE = 1
-    DIRTY_STATE = 2
 
     # Merging
     NUM_UPDATES_FOR_MERGE = 500
@@ -48,5 +48,10 @@ Schema encoding col
         values and those with NULL values"
 - Initialize to 0
 
-
+Tail Page Sequence Number Col
+    - "The lineage of each base page is
+    maintained internally using the notion of Tail-Page Sequence Number (TPS). The TPS
+    is lineage information that is kept on every base page. TPS tracks the RID of the last tail
+    record (TID) that has been applied (merged) to a base page. The TID space could be
+    drawn from the range 2 to , decreasing monotonically."
 """

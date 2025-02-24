@@ -2,17 +2,41 @@ from lstore.table import Table
 from lstore.config import Config
 from lstore.bufferpool import Bufferpool
 
+import os
+import json
+
 class Database():
 
     def __init__(self):
-        self.tables = {}
+        self.path = None
         self.disk = None
+        self.bufferpool = None
+        self.tables = {}
 
     # Checks the given path. The path could either already contain a db or one must be created
     def open(self, path):
-        pass
+        self.path = path
+        self.disk = Disk(path)
+        self.bufferpool = Bufferpool(self.disk)
+
+        # If disk dir exists, read it
+        if os.path.exists(path):
+            self.tables = self.disk.read_db()
+
+        # If not, create new disk dir
+        else:
+            os.makedirs(path, exist_ok=True)
+            self.tables = {}
+
+    # Close the db, write memory to disk for durable storage
     def close(self):
-        pass
+        if not self.path_exists():
+            return
+
+        for table in self.tables.values():
+            self.disk.write_table_metadata(table)
+        
+        self.bufferpool.write_back_all_dirty_pages()
 
     """
     # Creates a new table
@@ -20,11 +44,9 @@ class Database():
     :param num_columns: int     #Number of Columns: all columns are integer
     :param key: int             #Index of table key in columns
     """
-    def create_table(self, name, num_columns, key_index):
-        if name in self.tables:
+    def create_table(self, name, num_columns, key_index):        
+        if not self.path_exists() or name in self.tables:
             return None
-        
-        self.bufferpool = Bufferpool()
 
         table = Table(name, num_columns, key_index, self.bufferpool)
         self.tables[name] = table
@@ -33,11 +55,12 @@ class Database():
     
     """
     # Deletes the specified table
+    # Once deleted, the table won't be saved to disk since it's not in self.tables anymore
     """
     def drop_table(self, name):
-        if name not in self.tables:
+        if not self.path_exists() or name not in self.tables:
             return
-    
+        
         del self.tables[name]
 
     
@@ -46,31 +69,51 @@ class Database():
     """
     def get_table(self, name):
         return self.tables.get(name, None)
+    
+    # Return bool whether path exists on disk
+    def path_exists(self):
+        return self.path != None and os.path.exists(self.path)
 
 
 class Disk():
     def __init__(self, db_path):
         self.db_path = db_path
     
-    # Read the whole table from disk and into memory
+    # Read db from disk and return tables dict (table name => Table())
     def read_db():
+        tables = {}
+        
+        return tables
+
+    # Write the given Table object's metadata to disk (next_rid, page_directory, index)
+    def write_table_metadata(table):
+        
+        # Write next_rid to table.hdr
+        # Write page directory to page_directory.json
+        # Use pickle to serialize index and write index.pickle
+        
         pass
 
-    # Write the whole table from memory and into disk
-    def write_db():
+    # Read table from disk and return Table object
+    def read_table(table_name):
+        # Read everything to create table object
         pass
     
-    # Read logical page from disk and return the LogicalPage object
-    def read_logical_page(page_range_index, record_type, logical_page_index):
+    # Read logical page from disk and return LogicalPage object
+    def read_logical_page(table_name, page_range_index, record_type, logical_page_index):
         pass
 
-    # Take a LogicalPage object and write it to disk
-    def write_logical_page(page_range_index, record_type, logical_page_index, logical_page):
+    # Write the given LogicalPage object to disk
+    def write_logical_page(table_name, page_range_index, record_type, logical_page_index, logical_page):
         pass
 
-    # Insert new tail page (no need for a func for inserting base pages bc they're fixed)
-    def insert_tail_page():
+    def insert_page_range(table_name, page_range_index):
+        with open(self., 'w') as 
         pass
 
-    def insert_page_range():
+    def insert_logical_page(table_name, page_range_index, record_type):
         pass
+
+    # # For creating any directory such as the db dir or page_range dir
+    # def create_directory(path):
+    #     os.makedirs(path, exist_ok=True)

@@ -17,6 +17,15 @@ class PhysicalPage:
         
         offset = offset_index * self.RECORD_SIZE
         return int.from_bytes(self.data[offset: (offset + self.RECORD_SIZE)], byteorder='big')
+    
+    def read_all(self):
+        offset = 0
+        record_data = []
+        for record in self.num_records:
+            record_data.append(int.from_bytes(self.data[offset: (offset + self.RECORD_SIZE)], byteorder='big'))
+            offset += self.RECORD_SIZE
+        return record_data
+
 
     def create(self, value):
         offset_index = self.num_records

@@ -7,16 +7,24 @@
 - Main thread (what the user runs)
 - Merging thread (starts when initializing table.py)
 
+
+TODOS
+- Disk saving/loading and disk functions
+- Bufferpool functions for reading/writing to disk (use disk functions)
+    - Make sure table.py and page_range.py is refactored to work with the bufferpool (no more direct access, must go through bufferpool)
+- Merge thread
+
+
 ## Disk Model
 File structure:
 - DB dir (contains tables) (dir name is in the path param)
     - table dir (dir name is table.name)
         - table.hdr (stores table.py's name, key, num_columns, next_rid)
         - page_directory.json
-        - index (use pickle to serialize it)
+        - index.pickle (use pickle to serialize it)
         - page_ranges dir (contains page ranges)
             - 0 dir (page range 0)
-                - page_range.hdr (stores page_range.py's num_base_records)
+                - page_range.hdr (stores page_range.py's num_base_records, num_tail_pages, num_updates)
                 - base_pages dir (contains base pages)
                     - 0 dir (base page 0)
                         - base_page.hdr (stores logical_page's num_records)
@@ -29,6 +37,7 @@ File structure:
                 - tail_pages dir (same format as base pages dir)
             - 1 dir (page range 1)...etc
     - table dir (with different name)...etc
+
 
 Must be able to create table, write to disk, close program, open program, read from disk, and fully initialize everything in table.py
 
@@ -89,9 +98,9 @@ Runs in its own thread, initialized in table.py
 table.py will need to keep initialize and increment the var num_updates
 
 Thread waiting
-- Merge thread will conditional wait (waits until a cond var is signaled) inside a while loop that checks if it's ok to merge.
-    - while num_updates < Config.NUM_UPDATES_FOR_MERGE
-- Signal the cond var every time the num of updates var is incremented.
+- Merge thread will conditional wait (waits until a cond var is signaled) inside a while loop that checks if it should continue waiting or merge.
+    - while len(self.merge_queue) == 0
+- Signal the cond var when appending the merge queue.
 - Once the merge thread escapes the cond wait, reset num_updates to 0 and do the merge
 
 Merging process

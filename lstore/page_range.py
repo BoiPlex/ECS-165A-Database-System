@@ -6,9 +6,13 @@ class PageRange:
         self.num_columns = num_columns # Includes 4 meta columns
         self.bufferpool = bufferpool # Allows access to logical pages in the bufferpool
 
+        self.num_base_records = 0 # (We don't keep track of tail records because they're theoretically infinite)
+
         # self.base_pages = [LogicalPage(num_columns) for i in range(16)] # Fixed
         # self.tail_pages = [LogicalPage(num_columns)] # Dynamic
-        self.num_base_records = 0 # (We don't keep track of tail records because they're theoretically infinite)
+        self.num_tail_pages = 1
+
+        self.num_updates = 0 # Merge the page range once it reaches Config.NUM_UPDATES_FOR_MERGE
 
     def has_capacity(self):
         return self.num_base_records < Config.MAX_RECORDS_PER_PAGE_RANGE
@@ -35,6 +39,7 @@ class PageRange:
         else:
             if not logical_pages[-1].has_capacity():
                 logical_pages.append(LogicalPage(self.num_columns))
+                self.num_tail_pages += 1
             logical_page_index = len(self.tail_pages) - 1 
         
         # Create base/tail record
