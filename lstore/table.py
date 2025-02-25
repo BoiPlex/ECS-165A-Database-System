@@ -193,7 +193,6 @@ class Table:
 
         return True
 
-
     '''
     Merges tail record data into base records
     '''
