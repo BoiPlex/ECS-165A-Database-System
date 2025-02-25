@@ -12,6 +12,7 @@ from lstore.config import Config
 
 db = Database()
 
+db.open("/amogus")
 table = db.create_table("Bruh", 3, 0)
 query = Query(table)
 
