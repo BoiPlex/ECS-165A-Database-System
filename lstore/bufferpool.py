@@ -76,34 +76,32 @@ class Bufferpool():
     def write_back_all_dirty_frames(self):
         for page_id, frame in self.frames.items(): 
             if frame.dirty: 
-                table_name, page_range_index,record_type, logical_page_index = page_id
-                self.disk.write_logical_pages(table_name,page_range_index,record_type,logical_page_index,frame.logical_page) #uses stored location modifying the logical page back to disk
+            #  table_name, page_range_index,record_type, logical_page_index = page_id
+            #  self.disk.write_logical_pages(table_name,page_range_index,record_type,logical_page_index,frame.logical_page) #uses stored location modifying the logical page back to disk
                 frame.dirty = False
 
     def pin_frame(self, frame):
         """ Prevents logical page from being evicted """
-        table_name, page_range_index, record_type, logical_page_index = frame.location
-        page_id = (table_name,page_range_index, record_type, logical_page_index)
-        if page_id in self.frames:
-            if self.num_pinned >= Config.NUM_FRAMES:
-                raise RuntimeError("MAXED PINS. CANNOT PIN MORE")
-            
-            if not self.frames[page_id].pinned:
-                self.frames[page_id].pinned = True
-                self.num_pinned += 1
+        if frame.pinned:
+            return
+
+        if self.num_pinned >= Config.NUM_FRAMES:
+            raise RuntimeError("MAXED PINS. CANNOT PIN MORE")
+    
+        if not frame.pinned:
+            frame.pinned = True
+            self.num_pinned += 1
 
     def unpin_frame(self, frame):
         """ allows logical page to be evicted"""
-        table_name, page_range_index, record_type, logical_page_index = frame.location
-        page_id = (table_name,page_range_index, record_type, logical_page_index)
-        if page_id in self.frames:
-            if self.frames[page_id].pinned:
-                self.frames[page_id].pinned = False
-                self.num_pinned -= 1
+        if frame.pinned:
+            frame.pinned = False
+            frame.dirty = True
+            self.num_pinned -= 1
 
     def unpin_all_frames(self): # for deadlocking 
         for frame in self.frames.values():
-            frame.pinned = False
+            self.unpin_frame(frame)
 
 # References a logical page
 class Frame():

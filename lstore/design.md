@@ -114,7 +114,31 @@ Merging process
 - Write the base records (which are updated) to disk
 
 
+As for merge:
+Modify the update record func, from now on we have to add 2 tail records instead of just 1.
+The first tail record inserted is called a snapshot record, which stores the same data columns as the base record's current latest.
+It's schema encoding column should be 0 so we can identify it (since it didn't update anything).
 
+The next tail record (whose indirection points to that snapshot record since its another tail
+record) is the actual update and we do that normally. This means we'll have double the tail records,
+with snapshot tail records layered in-between. Due to the new snapshot tail records, we'll need to modify
+ the get_next_lineage function which should skip the snapshot record (identified by schema encoding of 0).
+
+We can add a bool param to specify if we should skip the snapshots, which defaults to true, so we can still
+use it to get next lineage without skipping the snapshot (important for merging)
+
+For the merge, we start by accessing the base record's latest snapshot record (go through indirection 2 times)
+and storing it in a newly allocated base record. We don't update the base_rid in the page directory.
+The base rid should still point to its base record. This new base record is simply used as working memory
+and to persist the updated data incase the database is closed during the merge.
+
+We'll only be merging into the base record's data columns, we should not touch the metadata. This way, new updates can still update
+the base record's indirection. After the merge, we can delete the newly allocated base record. TA didn't say this,
+but we could have just 1 base record dedicated to merging, to prevent creating a new base record for each time we merge a base record.
+
+In the end, the base record is still in the same location, just that its data columns are updated now.
+I'm waiting for an announcement from the TA on whether select/sum version should access the merged tail
+records or go straight to the base record. TPS plays a role here. Based on that, we'll possibly have to modify the querying to use TPS.
 
 
 

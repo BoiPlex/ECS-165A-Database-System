@@ -108,7 +108,7 @@ class Disk():
         pass
 
     def insert_page_range(table_name, page_range_index):
-        with open(self., 'w') as 
+        #with open(self., 'w') as !!
         pass
 
     def insert_logical_page(table_name, page_range_index, record_type):

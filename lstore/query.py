@@ -148,7 +148,6 @@ class Query:
             base_rid = record.rid
             current_version = 0
             current_rid = self.table.get_next_lineage_rid(Config.BASE_RECORD, record.rid) # Latest version (version 0)
-            
 
             while current_version > relative_version and current_rid != base_rid:
                 current_rid = self.table.get_next_lineage_rid(Config.TAIL_RECORD, current_rid)

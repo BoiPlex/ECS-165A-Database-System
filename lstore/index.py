@@ -4,7 +4,7 @@ A data structure holding indices for various columns of a table. Key column shou
 from BTrees.OOBTree import OOBTree
 # from sortedcontainers import SortedDict
 # index = SortedDict()
-
+import pickle #rename index.py to .pickle?
 # print(dir(BTrees))
 class Index:
 
@@ -50,8 +50,6 @@ class Index:
         return rid_list
 
 
-
-
     """
     # optional: Creates index on target column in the table. Searches for all RIDs mapping it's column values to their each RID later storing them 
     """
@@ -69,3 +67,16 @@ class Index:
 
     def drop_index(self, column):
         self.indices[column].clear()
+
+
+    def write_index_to_disk(self):
+        with open(f"{self.table.name}_index.pkl", "wb") as f:
+            pickle.dump(self.indices,f)
+        
+
+    def load_index_from_disk(self):
+        try:
+            with open(f"{self.table.name}_index.pkl", "rb") as f:
+                self.indices = pickle.load(f)
+        except FileNotFoundError:
+            print("NO EXISTING INDEX CREATE NEW ONE")

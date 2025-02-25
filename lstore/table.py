@@ -29,7 +29,7 @@ class Table:
         self.num_columns = num_columns
         self.bufferpool = bufferpool
         
-        # Maps RID -> (page_range_index, logical_page-index, offset_index)
+        # Maps RID -> (page_range_index, record_type, logical_page-index, offset_index)
         self.page_directory = {}
 
         self.index = Index(self)
@@ -51,14 +51,17 @@ class Table:
         if rid not in self.page_directory:
             return False # Invalid base record rid
     
-        page_range_index, logical_page_index, offset_index = self.page_directory[rid]
-        record_columns = self.page_ranges[page_range_index].read_record(record_type, logical_page_index, offset_index)
+        page_range_index, _, logical_page_index, offset_index = self.page_directory[rid]
+
+        logical_page_frame = self.bufferpool.request_logical_page_frame(self.name, page_range_index, record_type, logical_page_index)
+
+        record_columns = logical_page_frame.read_record(offset_index)
 
         record_metadata = record_columns[:4]
         record_data = record_columns[4:]
         
         if include_metacolumns:
-            record = Record(rid, record_columns[self.key], record_metadata+record_data)
+            record = Record(rid, record_columns[self.key], record_metadata + record_data)
         else:
             record = Record(rid, record_columns[self.key], record_data)
         
@@ -74,7 +77,7 @@ class Table:
             # Allocate new page range
             self.page_ranges.append(PageRange(self.num_columns + Config.NUM_META_COLUMNS, self.bufferpool))
             page_range_index = len(self.page_ranges) - 1
-
+        
         # Get unique RID
         base_rid = self.allocate_rid()
         
@@ -82,7 +85,7 @@ class Table:
 
         # Create record and add to page directory
         logical_page_index, offset_index = self.page_ranges[page_range_index].create_record(Config.BASE_RECORD, record_columns)
-        self.page_directory[base_rid] = (page_range_index, logical_page_index, offset_index)
+        self.page_directory[base_rid] = (page_range_index, Config.BASE_RECORD, logical_page_index, offset_index)
 
         # Add to index
         self.index.create_index(base_rid, record_nonmeta_columns)
@@ -95,11 +98,8 @@ class Table:
         if base_rid not in self.page_directory or len(record_nonmeta_columns) != self.num_columns or self.index.key_to_rid(self.key, record_nonmeta_columns[self.key]) != -1:
             return False
 
-        # Get unique RID
-        tail_rid = self.allocate_rid()
-
         # Base record's indexes
-        page_range_index, base_page_index, offset_index = self.page_directory[base_rid]
+        page_range_index, record_type, base_page_index, offset_index = self.page_directory[base_rid]
 
         schema_encoding_column_value = self.page_ranges[page_range_index].base_pages[base_page_index].physical_pages[Config.SCHEMA_ENCODING_COLUMN].read(offset_index)
 
@@ -114,26 +114,50 @@ class Table:
         # Get latest existing record
         latest_rid = self.page_ranges[page_range_index].base_pages[base_page_index].physical_pages[Config.INDIRECTION_COLUMN].read(offset_index)
         latest_record_type = Config.BASE_RECORD if latest_rid == base_rid else Config.TAIL_RECORD
+        latest_record_copy =  self.read_record(latest_record_type, latest_rid)
 
+        'Creates snapshot record'
+        # Get unique RID for the snapshot tail RID
+        snapshot_tail_rid = self.allocate_rid()
+
+        snapshot_nonmeta_columns = latest_record_copy.columns
+        for nonmeta_column_index, column_value in enumerate(record_nonmeta_columns):
+            if column_value is None:
+                continue
+            snapshot_nonmeta_columns[nonmeta_column_index] = column_value
+
+        # Initialize the columns and set the indirection to previous record
+        record_columns = self.__initialize_record_columns(snapshot_tail_rid, snapshot_nonmeta_columns)
+        record_columns[Config.INDIRECTION_COLUMN] = latest_rid
+        
+        # Create new tail record and update page directory
+        logical_page_index, offset_index = self.page_ranges[page_range_index].create_record(Config.TAIL_RECORD, latest_record_copy.columns)
+        self.page_directory[snapshot_tail_rid] = (page_range_index, Config.TAIL_RECORD, logical_page_index, offset_index)
+
+        self.page_ranges[page_range_index].num_updates += 1
+
+        'Creates full update record'
+        # Allocate RID for latest tail record
+        tail_rid = self.allocate_rid()
+        
         # Update base record's indirection column
         self.page_ranges[page_range_index].base_pages[base_page_index].physical_pages[Config.INDIRECTION_COLUMN].update_value(offset_index, tail_rid) 
 
         # Get latest existing record's data and update its column
-        record_copy =  self.read_record(latest_record_type, latest_rid)
-        new_nonmeta_columns = record_copy.columns
+        new_nonmeta_columns = latest_record_copy.columns
         for nonmeta_column_index, column_value in enumerate(record_nonmeta_columns):
             if column_value is None:
                 continue
             new_nonmeta_columns[nonmeta_column_index] = column_value
-
         
         # Initialize the columns and set the indirection to previous record
         record_columns = self.__initialize_record_columns(tail_rid, new_nonmeta_columns)
-        record_columns[Config.INDIRECTION_COLUMN] = latest_rid
+        record_columns[Config.INDIRECTION_COLUMN] = snapshot_tail_rid
 
         # Create new tail record and update page directory
         logical_page_index, offset_index = self.page_ranges[page_range_index].create_record(Config.TAIL_RECORD, record_columns)
-        self.page_directory[tail_rid] = (page_range_index, logical_page_index, offset_index)
+        self.page_directory[tail_rid] = (page_range_index, Config.TAIL_RECORD, logical_page_index, offset_index)
+
 
         # Update page range's num_updates, if need to merge then append to the self.merge_queue and notify the merge thread
         self.page_ranges[page_range_index].num_updates += 1
@@ -144,14 +168,16 @@ class Table:
         
         return True
     
-    # Deletes base record (along with associated tail record)
-    # For now just mark as deleted, will be fully implemented with __merge(self)
+    '''
+    Deletes base record (along with associated tail record)
+    For now just mark as deleted, will be fully implemented with __merge(self)
+    '''
     def delete_record(self, base_rid):
         if base_rid not in self.page_directory:
             return False # Invalid rid
     
         # Delete base record
-        page_range_index, base_page_index, offset_index = self.page_directory[base_rid]
+        page_range_index, record_type, base_page_index, offset_index = self.page_directory[base_rid]
         self.page_ranges[page_range_index].mark_to_delete_record(Config.BASE_RECORD, base_page_index, offset_index)
         del self.page_directory[base_rid]
 
@@ -159,12 +185,16 @@ class Table:
         tail_rid = self.page_ranges[page_range_index].base_pages[base_page_index].physical_pages[Config.INDIRECTION_COLUMN].read(offset_index)
         if tail_rid in self.page_directory:
             # Delete associated tail record
-            page_range_index, tail_page_index, offset_index = self.page_directory[tail_rid]
+            page_range_index, record_type, tail_page_index, offset_index = self.page_directory[tail_rid]
             self.page_ranges[page_range_index].mark_to_delete_record(Config.TAIL_RECORD, tail_page_index, offset_index)
             del self.page_directory[tail_rid]
 
         return True
-    
+
+
+    '''
+    Merges tail record data into base records
+    '''
     def __merge(self):
         # TODO: for MILESTONE 2
         while True:
@@ -179,11 +209,15 @@ class Table:
 
                 # self.bufferpool.pin_page(self.name, page_range_index, Config.)
 
-                # Get copy of base and tail pages
+                # Get copy of base pages
                 base_pages_copy = []
                 for base_page_index in range(Config.NUM_BASE_PAGES):
-                    base_page = self.bufferpool.request_logical_page(self.name, page_range_index, Config.BASE_RECORD, base_page_index)
+                    base_page_frame = self.bufferpool.request_logical_page_frame(self.name, page_range_index, Config.BASE_RECORD, base_page_index)
+                    
+                    self.bufferpool.pin_frame(base_page_frame)
+                    base_page = base_page_frame.logical_page
                     base_page_copy = copy.copy(base_page)
+                    self.bufferpool.unpin_frame(base_page_frame)
 
                     if base_page_copy.physical_pages[Config.INDIRECTION_COLUMN] == 0:
                         continue
@@ -194,44 +228,46 @@ class Table:
                 #     tail_page = self.bufferpool.request_logical_page(self.name, page_range_index, Config.TAIL_RECORD, tail_page_index)
                 #     tail_page_copy = copy.copy(tail_page)
                 #     tail_pages_copy.append(tail_page_copy)
-                    
-                # Gathers all record IDs from base pages in current page range
-                base_rids = []
+
+                # Iterates through all records, for only data columns: merge the latest snapshot tail record into base record
                 for base_page_copy in base_pages_copy:
-                    base_rids.append(base_page_copy.physical_pages[Config.RID_COLUMN].read_all())
-                        
-                # Iterates through all records, overwriting them with most updated information (Merge)
-                for base_rid in base_rids:
-                    latest_update_rid = self.get_next_lineage_rid(Config.BASE_RECORD, base_rid)
-                    latest_record_type = Config.BASE_RECORD if latest_update_rid == base_rid else Config.TAIL_RECORD
-                    if latest_record_type == Config.BASE_RECORD:
-                        continue
-                    else:
-                        _, base_page_index, base_offset_index = self.page_directory[base_rid]
-                        # base_record = self.read_record(Config.BASE_RECORD, rid, include_metacolumns=True)
-                        latest_record = self.read_record(Config.TAIL_RECORD, latest_update_rid, include_metacolumns=True)
-                        latest_columns = latest_record.columns # New reference obj, can modify
+                    base_rids = base_page_copy.physical_pages[Config.RID_COLUMN].read_all()
+                    for base_rid in base_rids:
+                        latest_snapshot_rid = self.get_latest_snapshot_rid(base_rid)
+                        latest_snapshot_record_type = Config.BASE_RECORD if latest_snapshot_rid == base_rid else Config.TAIL_RECORD
+                        if latest_snapshot_record_type == Config.BASE_RECORD:
+                            continue
+                        else:
+                            # Base record's meta-columns
+                            base_record = self.read_record(Config.BASE_RECORD, base_rid, include_metacolumns=True)
+                            base_meta_columns = base_record.columns[0:Config.NUM_META_COLUMNS]
 
-                        # Reverse engineer from tail record to new base record:
-                        latest_columns[Config.INDIRECTION_COLUMN] = base_rid
-                        latest_columns[Config.RID_COLUMN] = base_rid # change tail rid to base rid
-                        latest_columns[Config.SCHEMA_ENCODING_COLUMN] = 0
-                        # TIMESTAMP_COLUMN stays as tail record's
-                        latest_columns[Config.TAIL_PAGE_SEQUENCE_COLUMN].update_value(latest_update_rid)
-                        # Data columns stay as tail record's
-                        
-                        # Allocate new page range
-                        new_page_range_index = self.find_free_page_range()
-                        if new_page_range_index < 0:
-                            # Allocate new page range
-                            self.page_ranges.append(PageRange(self.num_columns + Config.NUM_META_COLUMNS, self.bufferpool))
-                            page_range_index = len(self.page_ranges) - 1
-                        
-                        # Create record and allocate base page index and offset index
-                        new_base_page_index, new_offset_index = self.page_ranges[new_page_range_index].create_record(Config.BASE_RECORD, latest_columns)
-                        # Update base record's page directory to point to new location
-                        self.page_directory[base_rid] = (new_page_range_index, new_base_page_index, new_offset_index)
+                            # Latest snapshot's data columns
+                            latest_snapshot_record = self.read_record(Config.TAIL_RECORD, latest_snapshot_rid, include_metacolumns=False)
+                            latest_snapshot_data_columns = latest_snapshot_record.columns # New reference obj, can modify
 
+                            # Create merged base record's columns. Don't touch the base record's meta-columns
+                            new_columns = base_meta_columns + latest_snapshot_data_columns
+
+                            # Update base record
+                            _, _, base_page_index, offset_index = self.page_directory[base_rid]
+                            self.bufferpool.request_logical_page_frame(self.name, page_range_index, Config.BASE_RECORD, base_page)
+
+                        # # Allocate new page range
+                        # new_page_range_index = self.find_free_page_range()
+                        # if new_page_range_index < 0:
+                        #     # Allocate new page range
+                        #     self.page_ranges.append(PageRange(self.num_columns + Config.NUM_META_COLUMNS, self.bufferpool))
+                        #     page_range_index = len(self.page_ranges) - 1
+                        
+                        # # Create record and allocate base page index and offset index
+                        # new_base_page_index, new_offset_index = self.page_ranges[new_page_range_index].create_record(Config.BASE_RECORD, new_columns)
+                        # # Update base record's page directory to point to new location
+                        # self.page_directory[base_rid] = (new_page_range_index, Config.BASE_RECORD, new_base_page_index, new_offset_index)
+
+    '''
+    Readies record columns for creation/updating
+    '''
     def __initialize_record_columns(self, rid, record_nonmeta_columns):
         record_columns = []
 
@@ -247,22 +283,26 @@ class Table:
 
         return list(record_columns) # Return new list (not reference)
  
-    # Iterate through the page ranges to find one with space
-    # Returns page_range_index if successful, -1 otherwise
+    '''
+    Iterate through the page ranges to find one with space
+    Returns page_range_index if successful, -1 otherwise
+    '''
     def find_free_page_range(self):
         for page_range_index, page_range in enumerate(self.page_ranges):
             if page_range.has_capacity():
                 return page_range_index
         return -1
     
-    # Gets location of record from page directory
-    # Accesses columns physical page and gets value
-    # Used for index.py
-    # FOR BASE RECORDS
+    '''
+    Gets location of record from page directory
+    Accesses columns physical page and gets value
+    Used for index.py
+    FOR BASE RECORDS
+    '''
     def get_column_value_nonmeta(self, rid, nonmeta_column_index):
         column_index = nonmeta_column_index + Config.NUM_META_COLUMNS
         
-        page_range_index, logical_page_index, offset_index = self.page_directory[rid]
+        page_range_index, record_type, logical_page_index, offset_index = self.page_directory[rid]
         return self.page_ranges[page_range_index].base_pages[logical_page_index].physical_pages[column_index].read(offset_index)
 
     def allocate_rid(self):
@@ -270,18 +310,39 @@ class Table:
         self.next_rid += 1
         return rid
 
-    def get_next_lineage_rid(self, record_type, rid):
+    def get_next_lineage_rid(self, record_type, rid, skip_snapshot=True):
         if rid not in self.page_directory:
             return rid
-        page_range_index, logical_page_index, offset_index = self.page_directory[rid]
-
-        if record_type == Config.BASE_RECORD:
-            logical_pages = self.page_ranges[page_range_index].base_pages
-        else:
-            logical_pages = self.page_ranges[page_range_index].tail_pages
         
+        page_range_index, record_type, logical_page_index, offset_index = self.page_directory[rid]
+        logical_pages = self.page_ranges[page_range_index].get_logical_pages(record_type)
+
         next_rid = logical_pages[logical_page_index].physical_pages[Config.INDIRECTION_COLUMN].read(offset_index)
+        if skip_snapshot:
+            next_page_range_index, next_record_type, next_logical_page_index, next_offset_index = self.page_directory[next_rid]
+            next_logical_pages = self.page_ranges[next_page_range_index].get_logical_pages(next_record_type)
+            schema_encoding = next_logical_pages[next_logical_page_index].physical_pages[Config.SCHEMA_ENCODING_COLUMN].read(next_offset_index)
+            if schema_encoding == 0:
+                return self.get_next_lineage_rid(record_type, next_rid, skip_snapshot=False)
+            
         return next_rid
     
-    def get_tail_page_sequence_rid(self, )
+    '''
+    Get the latest snapshot's rid for a given base record
+    '''
+    def get_latest_snapshot_rid(self, base_rid):
+        current_rid = self.table.get_next_lineage_rid(Config.BASE_RECORD, base_rid, skip_snapshot=False) # Latest version
+
+        while True:
+            page_range_index, record_type, logical_page_index, offset_index = self.page_directory[current_rid]
+            logical_pages = self.page_ranges[page_range_index].get_logical_pages(record_type)
+            schema_encoding = logical_pages[logical_page_index].physical_pages[Config.SCHEMA_ENCODING_COLUMN].read(offset_index)
+            if schema_encoding == 0 or current_rid == base_rid:
+                break
+            current_rid = self.table.get_next_lineage_rid(Config.TAIL_RECORD, current_rid)
+        
+        return current_rid
+
+    
+    # def get_tail_page_sequence_rid(self, )
     
