@@ -1,9 +1,13 @@
 from lstore.table import Table
 from lstore.config import Config
 from lstore.bufferpool import Bufferpool
+from lstore.page_range import PageRange
+from lstore.logical_page import LogicalPage
+from lstore.index import Index
 
 import os
 import json
+import pickle
 
 class Database():
 
@@ -82,11 +86,37 @@ class Disk():
     # Read db from disk and return tables dict (table name => Table())
     def read_db():
         tables = {}
-        
+        if not os.path.exists(self.db_path):
+            return tables
+
+        # Iterate through each table directory and load table data
+        for table_name in os.listdir(self.db_path):
+            table_path = os.path.join(self.db_path, table_name)
+            if os.path.isdir(table_path):
+                table = self.read_table(table_name)
+                tables[table_name] = table
         return tables
 
     # Write the given Table object's metadata to disk (next_rid, page_directory, index)
     def write_table_metadata(table):
+        
+        if not self.path_exists():
+            return
+        
+        table_dir = os.path.join(self.db_path, table.name)
+        os.makedirs(table_dir, exist_ok=True)
+        
+        # Save table metadata
+        with open(os.path.join(table_dir, "table.hdr"), "w") as f:
+            json.dump({"name": table.name, "key": table.key, "num_columns": table.num_columns, "next_rid": table.next_rid}, f)
+        
+        # Save page directory
+        with open(os.path.join(table_dir, "page_directory.json"), "w") as f:
+            json.dump(table.page_directory, f)
+        
+        # Save index using pickle serialization
+        with open(os.path.join(table_dir, "index.pickle"), "wb") as f:
+            pickle.dump(table.index, f)
         
         # Write next_rid to table.hdr
         # Write page directory to page_directory.json
@@ -96,23 +126,59 @@ class Disk():
 
     # Read table from disk and return Table object
     def read_table(table_name):
-        # Read everything to create table object
-        pass
+        table_dir = os.path.join(self.db_path, table_name)
+        if not os.path.exists(table_dir):
+            return None
+        
+        # Load metadata
+        with open(os.path.join(table_dir, "table.hdr"), "r") as f:
+            metadata = json.load(f)
+        
+        # Load page directory
+        with open(os.path.join(table_dir, "page_directory.json"), "r") as f:
+            page_directory = json.load(f)
+        
+        # Load index using pickle
+        with open(os.path.join(table_dir, "index.pickle"), "rb") as f:
+            index = pickle.load(f)
+        
+        table = Table(metadata["name"], metadata["num_columns"], metadata["key"], None)
+        table.next_rid = metadata["next_rid"]
+        table.page_directory = page_directory
+        table.index = index
+        return table
+
     
     # Read logical page from disk and return LogicalPage object
     def read_logical_page(table_name, page_range_index, record_type, logical_page_index):
-        pass
+        path = os.path.join(self.db_path, table_name, "page_ranges", str(page_range_index), record_type, str(logical_page_index))
+        
+        with open(path, "rb") as f:
+            logical_page = pickle.load(f)
+        return logical_page
 
     # Write the given LogicalPage object to disk
     def write_logical_page(table_name, page_range_index, record_type, logical_page_index, logical_page):
-        pass
+        path = os.path.join(self.db_path, table_name, "page_ranges", str(page_range_index), record_type, str(logical_page_index))
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        
+        with open(path, "wb") as f:
+            pickle.dump(logical_page, f)
 
     def insert_page_range(table_name, page_range_index):
-        with open(self., 'w') as 
-        pass
-
+        path = os.path.join(self.db_path, table_name, "page_ranges", str(page_range_index))
+        os.makedirs(path, exist_ok=True)
+        
+        # Create a metadata file for the new page range
+        with open(os.path.join(path, "page_range.hdr"), "w") as f:
+            json.dump({"num_base_records": 0, "num_tail_pages": 0, "num_updates": 0}, f)
+    
     def insert_logical_page(table_name, page_range_index, record_type):
-        pass
+        path = os.path.join(self.db_path, table_name, "page_ranges", str(page_range_index))
+        os.makedirs(path, exist_ok=True)
+        with open(os.path.join(path, "page_range.hdr"), "w") as f:
+            json.dump({"num_base_records": 0, "num_tail_pages": 0, "num_updates": 0}, f)
+
 
     # # For creating any directory such as the db dir or page_range dir
     # def create_directory(path):
