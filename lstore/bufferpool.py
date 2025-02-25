@@ -107,8 +107,8 @@ class Bufferpool():
 
 # References a logical page
 class Frame():
-    def __init__(self, logical_page):
+    def __init__(self, logical_page, location):
         self.dirty = False
         self.pinned = False
-        self.location = () # tuple: (table_name, page_range_index, record_type, logical_page_index)
+        self.location = location # tuple: (table_name, page_range_index, record_type, logical_page_index)
         self.logical_page = logical_page # Holds the in-memory logical page
