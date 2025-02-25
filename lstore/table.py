@@ -1,9 +1,10 @@
-from lstore.index import Index
-from lstore.physical_page import PhysicalPage
 from lstore.config import Config
+from lstore.bufferpool import Bufferpool
+from lstore.index import Index
 from lstore.page_range import PageRange
 from lstore.logical_page import LogicalPage
-from lstore.bufferpool import BufferPool
+from lstore.physical_page import PhysicalPage
+from lstore.disk import Disk
 
 from time import time
 import threading
@@ -36,7 +37,7 @@ class Table:
         
         self.next_rid = 1 # RID of 0 is reserved to indicate deletion
 
-        self.page_ranges = [PageRange(num_columns + Config.NUM_META_COLUMNS, self.bufferpool)]
+        self.page_ranges = []
 
         # Merging
         self.merge_queue = []
@@ -52,11 +53,9 @@ class Table:
             return False # Invalid base record rid
     
         page_range_index, _, logical_page_index, offset_index = self.page_directory[rid]
-
-        logical_page_frame = self.bufferpool.request_logical_page_frame(self.name, page_range_index, record_type, logical_page_index)
-
-        record_columns = logical_page_frame.read_record(offset_index)
-
+        
+        record_columns = self.page_ranges[page_range_index].read_record(record_type, logical_page_index, offset_index)
+        
         record_metadata = record_columns[:4]
         record_data = record_columns[4:]
         
@@ -75,8 +74,8 @@ class Table:
         page_range_index = self.find_free_page_range()
         if page_range_index < 0:
             # Allocate new page range
-            self.page_ranges.append(PageRange(self.num_columns + Config.NUM_META_COLUMNS, self.bufferpool))
-            page_range_index = len(self.page_ranges) - 1
+            page_range_index = len(self.page_ranges)
+            self.page_ranges.append(PageRange(self.name, page_range_index, self.num_columns + Config.NUM_META_COLUMNS, self.bufferpool))
         
         # Get unique RID
         base_rid = self.allocate_rid()
@@ -90,6 +89,8 @@ class Table:
         # Add to index
         self.index.create_index(base_rid, record_nonmeta_columns)
 
+        self.page_ranges[page_range_index].num_base_records += 1
+
         return True # Record was created
 
     # Update a record's column value (either creates new tail record or updates existing tail record)
@@ -101,18 +102,18 @@ class Table:
         # Base record's indexes
         page_range_index, record_type, base_page_index, offset_index = self.page_directory[base_rid]
 
-        schema_encoding_column_value = self.page_ranges[page_range_index].base_pages[base_page_index].physical_pages[Config.SCHEMA_ENCODING_COLUMN].read(offset_index)
-
+        schema_encoding_column_value = self.page_ranges[page_range_index].read_record_column(record_type, base_page_index, offset_index, Config.SCHEMA_ENCODING_COLUMN)
+        
         # Update base record's schema encoding column
         for nonmeta_column_index, column_value in enumerate(record_nonmeta_columns):
             if column_value == None:
                 continue
             bit_column_index = self.num_columns - nonmeta_column_index - 1
             schema_encoding_column_value |= (1 << bit_column_index)
-        self.page_ranges[page_range_index].base_pages[base_page_index].physical_pages[Config.SCHEMA_ENCODING_COLUMN].update_value(offset_index, schema_encoding_column_value)
+        self.page_ranges[page_range_index].update_record_column(record_type, base_page_index, offset_index, Config.SCHEMA_ENCODING_COLUMN, schema_encoding_column_value)
 
         # Get latest existing record
-        latest_rid = self.page_ranges[page_range_index].base_pages[base_page_index].physical_pages[Config.INDIRECTION_COLUMN].read(offset_index)
+        latest_rid = self.page_ranges[page_range_index].read_column_value(record_type, base_page_index, offset_index, Config.INDIRECTION_COLUMN)
         latest_record_type = Config.BASE_RECORD if latest_rid == base_rid else Config.TAIL_RECORD
         latest_record_copy =  self.read_record(latest_record_type, latest_rid)
 
@@ -141,7 +142,7 @@ class Table:
         tail_rid = self.allocate_rid()
         
         # Update base record's indirection column
-        self.page_ranges[page_range_index].base_pages[base_page_index].physical_pages[Config.INDIRECTION_COLUMN].update_value(offset_index, tail_rid) 
+        self.page_ranges[page_range_index].update_record_column(Config.BASE_RECORD, logical_page_index, offset_index, Config.INDIRECTION_COLUMN, tail_rid)
 
         # Get latest existing record's data and update its column
         new_nonmeta_columns = latest_record_copy.columns
@@ -157,7 +158,6 @@ class Table:
         # Create new tail record and update page directory
         logical_page_index, offset_index = self.page_ranges[page_range_index].create_record(Config.TAIL_RECORD, record_columns)
         self.page_directory[tail_rid] = (page_range_index, Config.TAIL_RECORD, logical_page_index, offset_index)
-
 
         # Update page range's num_updates, if need to merge then append to the self.merge_queue and notify the merge thread
         self.page_ranges[page_range_index].num_updates += 1
@@ -182,7 +182,9 @@ class Table:
         del self.page_directory[base_rid]
 
         # Check if the base record has a tail record that already exists
+        base_page_frame = self.bufferpool.request_logical_page_frame(self.name, page_range_index, Config.BASE_RECORD, base_page_index)
         tail_rid = self.page_ranges[page_range_index].base_pages[base_page_index].physical_pages[Config.INDIRECTION_COLUMN].read(offset_index)
+
         if tail_rid in self.page_directory:
             # Delete associated tail record
             page_range_index, record_type, tail_page_index, offset_index = self.page_directory[tail_rid]
@@ -196,7 +198,6 @@ class Table:
     Merges tail record data into base records
     '''
     def __merge(self):
-        # TODO: for MILESTONE 2
         while True:
             with self.merge_cond:
                 while len(self.merge_queue) == 0:
@@ -205,9 +206,7 @@ class Table:
                 print("merge is happening")
 
                 page_range_index = self.merge_queue.pop(0)
-                page_range = self.page_ranges[page_range_index]
-
-                # self.bufferpool.pin_page(self.name, page_range_index, Config.)
+                # page_range = self.page_ranges[page_range_index]
 
                 # Get copy of base pages
                 base_pages_copy = []
@@ -237,21 +236,26 @@ class Table:
                         latest_snapshot_record_type = Config.BASE_RECORD if latest_snapshot_rid == base_rid else Config.TAIL_RECORD
                         if latest_snapshot_record_type == Config.BASE_RECORD:
                             continue
-                        else:
-                            # Base record's meta-columns
-                            base_record = self.read_record(Config.BASE_RECORD, base_rid, include_metacolumns=True)
-                            base_meta_columns = base_record.columns[0:Config.NUM_META_COLUMNS]
+                        
+                        # # Base record's meta-columns
+                        # base_record = self.read_record(Config.BASE_RECORD, base_rid, include_metacolumns=True)
+                        # base_meta_columns = base_record.columns[0:Config.NUM_META_COLUMNS]
 
-                            # Latest snapshot's data columns
-                            latest_snapshot_record = self.read_record(Config.TAIL_RECORD, latest_snapshot_rid, include_metacolumns=False)
-                            latest_snapshot_data_columns = latest_snapshot_record.columns # New reference obj, can modify
+                        # Latest snapshot's data columns
+                        latest_snapshot_record = self.read_record(Config.TAIL_RECORD, latest_snapshot_rid, include_metacolumns=False)
+                        latest_snapshot_data_columns = latest_snapshot_record.columns # New reference obj, can modify
 
-                            # Create merged base record's columns. Don't touch the base record's meta-columns
-                            new_columns = base_meta_columns + latest_snapshot_data_columns
-
-                            # Update base record
-                            _, _, base_page_index, offset_index = self.page_directory[base_rid]
-                            self.bufferpool.request_logical_page_frame(self.name, page_range_index, Config.BASE_RECORD, base_page)
+                        # Update base record
+                        _, _, base_page_index, offset_index = self.page_directory[base_rid]
+                        base_page_frame = self.bufferpool.request_logical_page_frame(self.name, page_range_index, Config.BASE_RECORD, base_page)
+                        base_page = base_page_frame.logical_page
+                        self.bufferpool.pin_frame(base_page_frame)
+                        base_page_frame.dirty = True
+                        # Iterate through data columns to update them
+                        for column_index in range(self.num_columns): # self.num_columns is just for data columns
+                            new_value = latest_snapshot_data_columns[column_index]
+                            base_page.update_record_value(offset_index, Config.NUM_META_COLUMNS+column_index, new_value)
+                        self.bufferpool.unpin_frame(base_page_frame)
 
                         # # Allocate new page range
                         # new_page_range_index = self.find_free_page_range()
@@ -303,7 +307,8 @@ class Table:
         column_index = nonmeta_column_index + Config.NUM_META_COLUMNS
         
         page_range_index, record_type, logical_page_index, offset_index = self.page_directory[rid]
-        return self.page_ranges[page_range_index].base_pages[logical_page_index].physical_pages[column_index].read(offset_index)
+        column_value_nonmeta = self.page_ranges[page_range_index].read_record_column(record_type, logical_page_index, offset_index, column_index)
+        return column_value_nonmeta
 
     def allocate_rid(self):
         rid = self.next_rid
@@ -315,13 +320,10 @@ class Table:
             return rid
         
         page_range_index, record_type, logical_page_index, offset_index = self.page_directory[rid]
-        logical_pages = self.page_ranges[page_range_index].get_logical_pages(record_type)
-
-        next_rid = logical_pages[logical_page_index].physical_pages[Config.INDIRECTION_COLUMN].read(offset_index)
+        next_rid = self.page_ranges[page_range_index].read_record_column(record_type, logical_page_index, offset_index, Config.INDIRECTION_COLUMN)
         if skip_snapshot:
             next_page_range_index, next_record_type, next_logical_page_index, next_offset_index = self.page_directory[next_rid]
-            next_logical_pages = self.page_ranges[next_page_range_index].get_logical_pages(next_record_type)
-            schema_encoding = next_logical_pages[next_logical_page_index].physical_pages[Config.SCHEMA_ENCODING_COLUMN].read(next_offset_index)
+            schema_encoding = self.page_ranges[next_page_range_index].read_record_column(next_record_type, next_logical_page_index, next_offset_index, Config.SCHEMA_ENCODING_COLUMN)
             if schema_encoding == 0:
                 return self.get_next_lineage_rid(record_type, next_rid, skip_snapshot=False)
             
@@ -335,8 +337,7 @@ class Table:
 
         while True:
             page_range_index, record_type, logical_page_index, offset_index = self.page_directory[current_rid]
-            logical_pages = self.page_ranges[page_range_index].get_logical_pages(record_type)
-            schema_encoding = logical_pages[logical_page_index].physical_pages[Config.SCHEMA_ENCODING_COLUMN].read(offset_index)
+            schema_encoding = self.page_ranges[page_range_index].read_record_column(record_type, logical_page_index, offset_index, Config.SCHEMA_ENCODING_COLUMN)
             if schema_encoding == 0 or current_rid == base_rid:
                 break
             current_rid = self.table.get_next_lineage_rid(Config.TAIL_RECORD, current_rid)

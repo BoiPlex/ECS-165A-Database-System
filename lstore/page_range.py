@@ -1,17 +1,19 @@
-from lstore.logical_page import LogicalPage
 from lstore.config import Config
+from lstore.bufferpool import Bufferpool
+from lstore.logical_page import LogicalPage
+
 
 class PageRange:
-    def __init__(self, num_columns, bufferpool):
+    def __init__(self, table_name, page_range_index, num_columns, bufferpool):
         self.num_columns = num_columns # Includes 4 meta columns
         self.bufferpool = bufferpool # Allows access to logical pages in the bufferpool
+        self.table_name = table_name
+        self.page_range_index = page_range_index
 
-        self.num_base_records = 0 # (We don't keep track of tail records because they're theoretically infinite)
+        # self.num_base_pages = 0 # Tracks number of base pages in page range
+        # self.num_tail_pages = 0 # Tracks number of tail pages in page range
 
-        # self.base_pages = [LogicalPage(num_columns) for i in range(16)] # Fixed
-        # self.tail_pages = [LogicalPage(num_columns)] # Dynamic
-        self.num_tail_pages = 1
-
+        self.num_base_records = 0 # Tracks number of base records in page range 
         self.num_updates = 0 # Merge the page range once it reaches Config.NUM_UPDATES_FOR_MERGE
 
     def has_capacity(self):
@@ -19,57 +21,78 @@ class PageRange:
 
     # Read base/tail record
     def read_record(self, record_type, logical_page_index, offset_index):
-        logical_page = self.get_logical_pages(record_type)[logical_page_index]
-        return logical_page.read_record(offset_index)
-
-    def read_column(self, logical_page_index, column_index, offset_index):
-        pass
+        logical_page_frame = self.bufferpool.request_logical_page_frame(
+            self.table_name,
+            self.page_range_index,
+            record_type,
+            logical_page_index
+        )
+        self.bufferpool.pin_frame(logical_page_frame)
+        record = logical_page_frame.read_record(offset_index)
+        self.bufferpool.unpin_frame(logical_page_frame)
+        return record
     
     # Create NEW record (base or tail)
     def create_record(self, record_type, record_columns):
-        logical_pages = self.get_logical_pages(record_type)
-
-        # BASE_RECORD
-        if record_type == Config.BASE_RECORD:
-            logical_page_index = self.find_free_base_page()
-            # No space in any of the base pages
-            if logical_page_index < 0:
-                raise Exception("No space in any of the base pages")
-        # TAIL RECORD
-        else:
-            if not logical_pages[-1].has_capacity():
-                logical_pages.append(LogicalPage(self.num_columns))
-                self.num_tail_pages += 1
-            logical_page_index = len(self.tail_pages) - 1 
+        logical_page_index = self.find_free_logical_page(record_type) # Finds free logical page / creates new one
         
+        frame = self.bufferpool.request_logical_page_frame(self.table_name, self.page_range_index, record_type, logical_page_index)
+        self.bufferpool.pin_frame(frame)
+        frame.dirty = True
         # Create base/tail record
-        offset_index = logical_pages[logical_page_index].create_record(record_columns) # Can raise Error
-        if record_type == Config.BASE_RECORD:
-            self.num_base_records += 1
-
+        offset_index = frame.logical_page.create_record(record_columns) # Can raise Error
+        self.bufferpool.unpin_frame(frame)
+        
         # Return the index of the base/tail page the record was written to and offset index in the base/tail page
         return logical_page_index, offset_index
+    
+    # Read single column value of a record (RECORD MUST ALREADY EXIST)
+    def read_record_column(self, record_type, logical_page_index, offset_index, column_index):
+        logical_page_frame = self.bufferpool.request_logical_page_frame(
+            self.table_name,
+            self.page_range_index,
+            record_type,
+            logical_page_index
+        )
+        self.bufferpool.pin_frame(logical_page_frame)
+        
+        column_value = logical_page_frame.logical_page.physical_pages[column_index].read(offset_index)
 
-    # Update single column value of a tail record to overwrite (TAIL RECORD MUST ALREADY EXIST)
-    def update_tail_record_value(self, tail_page_index, offset_index, column_index, column_value):
-        self.tail_pages[tail_page_index].update_record_value(offset_index, column_index, column_value)
+        self.bufferpool.unpin_frame(logical_page_frame)
+
+        return column_value
+
+    # Update single column value of a record to overwrite (RECORD MUST ALREADY EXIST)
+    def update_record_column(self, record_type, logical_page_index, offset_index, column_index, column_value):
+        logical_page_frame = self.bufferpool.request_logical_page_frame(
+            self.table_name,
+            self.page_range_index,
+            record_type,
+            logical_page_index
+        )
+        self.bufferpool.pin_frame(logical_page_frame)
+        logical_page_frame.dirty = True
+
+        logical_page_frame.logical_page.update_record_value(offset_index, column_index, column_value)
+
+        self.bufferpool.unpin_frame(logical_page_frame)
 
     def mark_to_delete_record(self, record_type, logical_page_index, offset_index): # Flag for deletion of record (base or tail), full deletion only happens on merge        
-        logical_page = self.get_logical_pages(record_type)[logical_page_index]
-        logical_page.mark_to_delete_record(offset_index)
-    
-    def get_logical_pages(self, record_type):
-        # BASE_RECORD
-        if record_type == Config.BASE_RECORD:
-            return self.base_pages
-        # TAIL_RECORD
-        else:
-            return self.tail_pages
-    
+        logical_page_frame = self.bufferpool.request_logical_page_frame(
+            self.table_name,
+            self.page_range_index,
+            record_type,
+            logical_page_index
+        )
+        self.bufferpool.pin_frame(logical_page_frame)
+        logical_page_frame.dirty = True
+        logical_page_frame.logical_page.mark_to_delete_record(offset_index)
+        self.bufferpool.unpin_frame(logical_page_frame)
+     
     # Iterate through the base pages to find one with space
     # Returns base_page_index if successful, -1 otherwise
-    def find_free_base_page(self):
-        for base_page_index, base_page in enumerate(self.base_pages):
-            if base_page.has_capacity():
-                return base_page_index
-        return -1
+    def find_free_logical_page(self, record_type):
+        num_logical_records = self.num_base_records if record_type == Config.BASE_RECORD else self.num_updates
+        free_logical_page_index = num_logical_records // Config.MAX_RECORDS_PER_LOGICAL_PAGE
+        
+        return free_logical_page_index

@@ -26,7 +26,6 @@ class PhysicalPage:
             offset += self.RECORD_SIZE
         return record_data
 
-
     def create(self, value):
         offset_index = self.num_records
 
@@ -43,22 +42,3 @@ class PhysicalPage:
         start_index = offset_index*self.RECORD_SIZE
         value_bytes = value.to_bytes(self.RECORD_SIZE, byteorder='big') # Convert value to bytes (big-endian format)
         self.data[start_index : (start_index + self.RECORD_SIZE)] = value_bytes
-        
-    
-    # TODO: MILESTONE 2: Delete function for when a merge occurs. Fix other functions to accommodate this
-    def delete(self, offset_index):
-        pass
-
-
-
-
-
-    # def create(self, value):
-    #     if not self.has_capacity(): # Checks if there is room in page for new record to be written
-    #         raise Exception("Cannot write, this physical page is full.")
-
-    #     offset = self.num_records * self.RECORD_SIZE # Compute offset and insert value
-    #     self.update(offset, value)
-    #     self.num_records += 1 # Increments number of records stored for each record written
-
-    #     return offset

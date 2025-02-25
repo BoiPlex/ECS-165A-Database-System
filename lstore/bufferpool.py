@@ -40,9 +40,9 @@ class Bufferpool():
             logical_page = LogicalPage(Config.NUM_META_COLUMNS)
 
         frame = Frame(logical_page, (table_name, page_range_index, record_type, logical_page_index))
-        page_id = (table_name,page_range_index,logical_page_index)
-        self.frames[page_id] = frame
-        self.page_table[page_id] = frame  # Add to LRU tracking
+        #page_id = (table_name,page_range_index,logical_page_index)
+        self.frames[frame.location] = frame
+        self.page_table[frame.location] = frame  # Add to LRU tracking
         return frame
 
     def evict_frame(self):
@@ -51,19 +51,22 @@ class Bufferpool():
         if self.num_pinned == Config.NUM_FRAMES:
             raise RuntimeError("ALL FRAMES PINNED CANNOT EVICT")
 
-        for page_id, frame in self.page_table.items(): #Find unpinned pages
+        for location, frame in self.page_table.items(): #Find unpinned pages
             if not frame.pinned:
-                self.page_table.pop(page_id)
-                self.frames.pop(page_id)
+                self.page_table.pop(location)
+                self.frames.pop(location)
 
                 if frame.dirty:
-                    table_name,page_range_index, record_type, logical_page_index = page_id
+                    table_name,page_range_index, record_type, logical_page_index = location
                     self.write_back_page(table_name, page_range_index, record_type, logical_page_index)
             
                 return
 
     def write_back_frame(self, frame):
         """ writes dirty page back to disk. """
+        if not frame.dirty:
+            return
+        
         table_name, page_range_index,record_type, logical_page_index= frame.location
         # page_id = (table_name,page_range_index, record_type, logical_page_index)
 
@@ -74,10 +77,10 @@ class Bufferpool():
       
     # Write back all dirty pages (called when closing the db and saving to disk)
     def write_back_all_dirty_frames(self):
-        for page_id, frame in self.frames.items(): 
+        for location, frame in self.frames.items(): 
             if frame.dirty: 
-            #  table_name, page_range_index,record_type, logical_page_index = page_id
-            #  self.disk.write_logical_pages(table_name,page_range_index,record_type,logical_page_index,frame.logical_page) #uses stored location modifying the logical page back to disk
+                table_name, page_range_index,record_type, logical_page_index = location
+                self.disk.write_logical_pages(table_name,page_range_index,record_type,logical_page_index,frame.logical_page) #uses stored location modifying the logical page back to disk
                 frame.dirty = False
 
     def pin_frame(self, frame):
@@ -96,7 +99,6 @@ class Bufferpool():
         """ allows logical page to be evicted"""
         if frame.pinned:
             frame.pinned = False
-            frame.dirty = True
             self.num_pinned -= 1
 
     def unpin_all_frames(self): # for deadlocking 

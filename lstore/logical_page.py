@@ -1,8 +1,6 @@
 from lstore.config import Config
 from lstore.physical_page import PhysicalPage
 
-#import json
-
 # Represents either a base page or tail page (each set of columns), base/tail page is effectively a row
 class LogicalPage:
     
@@ -43,13 +41,12 @@ class LogicalPage:
     def mark_to_delete_record(self, offset_index):
         self.physical_pages[Config.INDIRECTION_COLUMN].update_value(offset_index, 0) # Can raise Error
 
-    
-
     '''
-    Column Values
+    Metadata Column Values
     -----------------
     INDIRECTION_COLUMN = 0
     RID_COLUMN = 1
     TIMESTAMP_COLUMN = 2
     SCHEMA_ENCODING_COLUMN = 3
+    TAIL_PAGE_SEQUENCE_COLUMN = 4
     '''

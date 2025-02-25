@@ -16,15 +16,18 @@ TODOS
 
 
 ## Disk Model
+SERIALIZE ALL JSONS (headers and page_directory)
+SERIALIZE index
+
 File structure:
 - DB dir (contains tables) (dir name is in the path param)
     - table dir (dir name is table.name)
-        - table.hdr (stores table.py's name, key, num_columns, next_rid)
-        - page_directory.json
-        - index.pickle (use pickle to serialize it)
+        - table.hdr (stores table.py's name, key, num_columns, next_rid) (serialize json)
+        - page_directory.json (serialize json)
+        - index.pickle (serialize obj)
         - page_ranges dir (contains page ranges)
             - 0 dir (page range 0)
-                - page_range.hdr (stores page_range.py's num_base_records, num_tail_pages, num_updates)
+                - page_range.hdr (stores page_range.py's page_range_index, num_base_records, num_updates)
                 - base_pages dir (contains base pages)
                     - 0 dir (base page 0)
                         - base_page.hdr (stores logical_page's num_records)
