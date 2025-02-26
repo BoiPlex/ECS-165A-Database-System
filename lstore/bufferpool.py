@@ -18,7 +18,7 @@ class Bufferpool():
         self.num_pinned = 0
         # self.frames = [Frame() for i in range(Config.NUM_FRAMES)]
     
-    def request_logical_page_frame(self, table_name, page_range_index, record_type, logical_page_index):
+    def request_logical_page_frame(self, num_columns, table_name, page_range_index, record_type, logical_page_index):
         """ Returns a page if its in memory, will load from disk if not. Returns the frame object """
         
         location = (table_name, page_range_index, record_type, logical_page_index)
@@ -30,14 +30,18 @@ class Bufferpool():
         if len(self.frames) >= Config.NUM_FRAMES: # Checks if bufferpool is full
             self.evict_frame()
         
-        return self.load_frame_from_disk(table_name, page_range_index, record_type, logical_page_index)
+        frame = self.load_frame_from_disk(num_columns, table_name, page_range_index, record_type, logical_page_index)
+         
+        if frame.logical_page.num_records==0:
+            frame.dirty=True
+        return frame
        
-    def load_frame_from_disk(self, table_name, page_range_index, record_type, logical_page_index):
+    def load_frame_from_disk(self, num_columns, table_name, page_range_index, record_type, logical_page_index):
         """ Loads page from disk into memory. """
         logical_page = self.disk.read_logical_page(table_name, page_range_index, record_type, logical_page_index)        
         
         if logical_page is None: # Creates new logical page if DNE
-            logical_page = LogicalPage(Config.NUM_META_COLUMNS)
+            logical_page = LogicalPage(num_columns)
 
         frame = Frame(logical_page, (table_name, page_range_index, record_type, logical_page_index))
         #page_id = (table_name,page_range_index,logical_page_index)
@@ -53,13 +57,11 @@ class Bufferpool():
 
         for location, frame in self.page_table.items(): #Find unpinned pages
             if not frame.pinned:
+                if frame.dirty:
+                    self.write_back_frame(frame)
+
                 self.page_table.pop(location)
                 self.frames.pop(location)
-
-                if frame.dirty:
-                    table_name,page_range_index, record_type, logical_page_index = location
-                    self.write_back_page(table_name, page_range_index, record_type, logical_page_index)
-            
                 return
 
     def write_back_frame(self, frame):
@@ -70,11 +72,14 @@ class Bufferpool():
         table_name, page_range_index,record_type, logical_page_index= frame.location
         # page_id = (table_name,page_range_index, record_type, logical_page_index)
 
-        if frame.location in self.frames:
-            logical_page = self.frames[frame.location].logical_page
-            self.disk.write_logical_pages(table_name,page_range_index,record_type,logical_page_index,logical_page)
-            self.frames[frame.location].dirty = False #clean
-      
+        #if frame.location in self.frames:
+            #logical_page = self.frames[frame.location].logical_page
+
+        table_name, page_range_index, record_type, logical_page_index = frame.location
+        self.disk.write_logical_page(table_name, page_range_index, record_type, logical_page_index, frame.logical_page)
+        #self.frames[frame.location].dirty = False #clean
+        
+        frame.dirty = False
     # Write back all dirty pages (called when closing the db and saving to disk)
     def write_back_all_dirty_frames(self):
         for location, frame in self.frames.items(): 

@@ -2,7 +2,7 @@
 A data structure holding indices for various columns of a table. Key column should be indexed by default, other columns can be indexed through this object. Indices are usually B-Trees, but other data structures can be used as well.
 """
 from BTrees.OOBTree import OOBTree
-import pickle #rename index.py to .pickle?
+import pickle 
 
 class Index:
 

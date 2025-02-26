@@ -24,7 +24,7 @@ class Database():
 
         # If disk dir exists, read it
         if os.path.exists(path):
-            self.tables = self.disk.read_db()
+            self.tables = self.disk.read_db(self.bufferpool)
         # If not, create new disk dir
         else:
             os.makedirs(path, exist_ok=True)
@@ -36,7 +36,7 @@ class Database():
            return
 
         for table in self.tables.values():
-            self.disk.write_table_metadata(table)
+            self.disk.write_table_and_page_ranges_metadata(table)
         
         self.bufferpool.write_back_all_dirty_pages()
 

@@ -30,7 +30,7 @@ for record in record_list:
 db.close() 
 print("close the database and write it to disk")
 
-db_reopened = Database() 
+db_reopened = Database()
 db_reopened.open() # what would the p
 
 # # Select

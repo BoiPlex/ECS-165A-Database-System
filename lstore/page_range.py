@@ -5,10 +5,11 @@ from lstore.logical_page import LogicalPage
 
 class PageRange:
     def __init__(self, table_name, page_range_index, num_columns, bufferpool):
-        self.num_columns = num_columns # Includes 4 meta columns
-        self.bufferpool = bufferpool # Allows access to logical pages in the bufferpool
         self.table_name = table_name
         self.page_range_index = page_range_index
+        self.num_columns = num_columns # Includes 4 meta columns
+        
+        self.bufferpool = bufferpool # Allows access to logical pages in the bufferpool
 
         # self.num_base_pages = 0 # Tracks number of base pages in page range
         # self.num_tail_pages = 0 # Tracks number of tail pages in page range
@@ -22,6 +23,7 @@ class PageRange:
     # Read base/tail record
     def read_record(self, record_type, logical_page_index, offset_index):
         logical_page_frame = self.bufferpool.request_logical_page_frame(
+            self.num_columns,
             self.table_name,
             self.page_range_index,
             record_type,
@@ -36,7 +38,7 @@ class PageRange:
     def create_record(self, record_type, record_columns):
         logical_page_index = self.find_free_logical_page(record_type) # Finds free logical page / creates new one
         
-        frame = self.bufferpool.request_logical_page_frame(self.table_name, self.page_range_index, record_type, logical_page_index)
+        frame = self.bufferpool.request_logical_page_frame(self.num_columns, self.table_name, self.page_range_index, record_type, logical_page_index)
         self.bufferpool.pin_frame(frame)
         frame.dirty = True
         # Create base/tail record
@@ -49,6 +51,7 @@ class PageRange:
     # Read single column value of a record (RECORD MUST ALREADY EXIST)
     def read_record_column(self, record_type, logical_page_index, offset_index, column_index):
         logical_page_frame = self.bufferpool.request_logical_page_frame(
+            self.num_columns,
             self.table_name,
             self.page_range_index,
             record_type,
@@ -65,6 +68,7 @@ class PageRange:
     # Update single column value of a record to overwrite (RECORD MUST ALREADY EXIST)
     def update_record_column(self, record_type, logical_page_index, offset_index, column_index, column_value):
         logical_page_frame = self.bufferpool.request_logical_page_frame(
+            self.num_columns,
             self.table_name,
             self.page_range_index,
             record_type,
@@ -79,6 +83,7 @@ class PageRange:
 
     def mark_to_delete_record(self, record_type, logical_page_index, offset_index): # Flag for deletion of record (base or tail), full deletion only happens on merge        
         logical_page_frame = self.bufferpool.request_logical_page_frame(
+            self.num_columns,
             self.table_name,
             self.page_range_index,
             record_type,

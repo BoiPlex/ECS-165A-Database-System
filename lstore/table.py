@@ -182,7 +182,7 @@ class Table:
         del self.page_directory[base_rid]
 
         # Check if the base record has a tail record that already exists
-        base_page_frame = self.bufferpool.request_logical_page_frame(self.name, page_range_index, Config.BASE_RECORD, base_page_index)
+        base_page_frame = self.bufferpool.request_logical_page_frame(self.get_total_columns(), self.name, page_range_index, Config.BASE_RECORD, base_page_index)
         tail_rid = self.page_ranges[page_range_index].base_pages[base_page_index].physical_pages[Config.INDIRECTION_COLUMN].read(offset_index)
 
         if tail_rid in self.page_directory:
@@ -210,7 +210,7 @@ class Table:
                 # Get copy of base pages
                 base_pages_copy = []
                 for base_page_index in range(Config.NUM_BASE_PAGES):
-                    base_page_frame = self.bufferpool.request_logical_page_frame(self.name, page_range_index, Config.BASE_RECORD, base_page_index)
+                    base_page_frame = self.bufferpool.request_logical_page_frame(self.get_total_columns(), self.name, page_range_index, Config.BASE_RECORD, base_page_index)
                     
                     self.bufferpool.pin_frame(base_page_frame)
                     base_page = base_page_frame.logical_page
@@ -246,7 +246,7 @@ class Table:
 
                         # Update base record
                         _, _, base_page_index, offset_index = self.page_directory[base_rid]
-                        base_page_frame = self.bufferpool.request_logical_page_frame(self.name, page_range_index, Config.BASE_RECORD, base_page)
+                        base_page_frame = self.bufferpool.request_logical_page_frame(self.get_total_columns(), self.name, page_range_index, Config.BASE_RECORD, base_page)
                         base_page = base_page_frame.logical_page
                         self.bufferpool.pin_frame(base_page_frame)
                         base_page_frame.dirty = True
@@ -345,4 +345,7 @@ class Table:
 
     
     # def get_tail_page_sequence_rid(self, )
+
+    def get_total_columns(self):
+        return self.num_columns + Config.NUM_META_COLUMNS
     

@@ -1,6 +1,7 @@
 from lstore.config import Config
 from lstore.physical_page import PhysicalPage
 
+
 # Represents either a base page or tail page (each set of columns), base/tail page is effectively a row
 class LogicalPage:
     
@@ -35,10 +36,14 @@ class LogicalPage:
 
     # Updates the value of one column of a record (row)
     def update_record_value(self, offset_index, column_index, column_value):
+        if offset_index >= self.num_records or offset_index < 0:
+            raise IndexError("Invalid index updating the record")
         self.physical_pages[column_index].update_value(offset_index, column_value)
     
     # RID of 0 is reserved for indicating deletion
     def mark_to_delete_record(self, offset_index):
+        if offset_index >= self.num_records or offset_index < 0:
+            raise IndexError("Invalid index deleting the record")
         self.physical_pages[Config.INDIRECTION_COLUMN].update_value(offset_index, 0) # Can raise Error
 
     '''
