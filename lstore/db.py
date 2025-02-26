@@ -32,13 +32,13 @@ class Database():
 
     # Close the db, write memory to disk for durable storage
     def close(self):
-        if not self.path_exists():
+        if not self.disk.path_exists():
            return
 
         for table in self.tables.values():
             self.disk.write_table_and_page_ranges_metadata(table)
         
-        self.bufferpool.write_back_all_dirty_pages()
+        self.bufferpool.write_back_all_dirty_frames()
 
     """
     # Creates a new table
@@ -47,7 +47,7 @@ class Database():
     :param key: int             #Index of table key in columns
     """
     def create_table(self, name, num_columns, key_index):        
-        if not self.path_exists() or name in self.tables:
+        if not self.disk.path_exists() or name in self.tables:
             return None
 
         table = Table(name, num_columns, key_index, self.bufferpool)
@@ -60,7 +60,7 @@ class Database():
     # Once deleted, the table won't be saved to disk since it's not in self.tables anymore
     """
     def drop_table(self, name):
-        if not self.path_exists() or name not in self.tables:
+        if not self.disk.path_exists() or name not in self.tables:
             return
         
         del self.tables[name]
@@ -72,6 +72,3 @@ class Database():
     def get_table(self, name):
         return self.tables.get(name, None)
     
-    # Return bool whether path exists on disk
-    def path_exists(self):
-        return self.path != None and os.path.exists(self.path)

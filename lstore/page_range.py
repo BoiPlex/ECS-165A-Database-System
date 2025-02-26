@@ -7,7 +7,7 @@ class PageRange:
     def __init__(self, table_name, page_range_index, num_columns, bufferpool):
         self.table_name = table_name
         self.page_range_index = page_range_index
-        self.num_columns = num_columns # Includes 4 meta columns
+        self.num_columns = num_columns # Includes meta columns
         
         self.bufferpool = bufferpool # Allows access to logical pages in the bufferpool
 
@@ -30,7 +30,7 @@ class PageRange:
             logical_page_index
         )
         self.bufferpool.pin_frame(logical_page_frame)
-        record = logical_page_frame.read_record(offset_index)
+        record = logical_page_frame.logical_page.read_record(offset_index)
         self.bufferpool.unpin_frame(logical_page_frame)
         return record
     

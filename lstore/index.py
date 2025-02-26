@@ -6,16 +6,15 @@ import pickle
 
 class Index:
 
-    def __init__(self, table):
-        self.indices = [OOBTree() for _ in range(table.num_columns)] 
-        self.table = table
-    
+    def __init__(self, num_columns):
+        self.num_columns = num_columns
+        self.indices = [OOBTree() for _ in range(self.num_columns)]
 
     """
     # Returns the rid of the record of the given key value. Returns -1 if not found.
     """
     def key_to_rid(self, key_column, key_value):
-        rid_list = self.table.index.locate(key_column, key_value)
+        rid_list = self.locate(key_column, key_value)
         if not rid_list:
             return -1
         return rid_list[0]
@@ -68,14 +67,14 @@ class Index:
         
  #################
 
-    def write_index_to_disk(self):
-        with open(f"{self.table.name}_index.pkl", "wb") as f:
-            pickle.dump(self.indices,f)
+    # def write_index_to_disk(self):
+    #     with open(f"{self.table.name}_index.pkl", "wb") as f:
+    #         pickle.dump(self.indices,f)
         
 
-    def load_index_from_disk(self):
-        try:
-            with open(f"{self.table.name}_index.pkl", "rb") as f:
-                self.indices = pickle.load(f)
-        except FileNotFoundError:
-            print("NO EXISTING INDEX CREATE NEW ONE")
+    # def load_index_from_disk(self):
+    #     try:
+    #         with open(f"{self.table.name}_index.pkl", "rb") as f:
+    #             self.indices = pickle.load(f)
+    #     except FileNotFoundError:
+    #         print("NO EXISTING INDEX CREATE NEW ONE")

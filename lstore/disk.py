@@ -51,19 +51,20 @@ class Disk():
 
         # loop through page_ranges and headers
         page_ranges_path = os.path.join(table_path, "page_ranges")
-        if os.path.exists(page_ranges_path):
-            for page_range_index in range(len(table.page_ranges)):
-                page_range_path = os.path.join(page_ranges_path, str(page_range_index))
-                page_range: PageRange = table.page_ranges[page_range_index]
-                
-                page_range_header = {
-                    "table_name": table.name,
-                    "page_range_index": page_range_index,
-                    "num_columns": page_range.num_columns,
-                    "num_base_records": page_range.num_base_records,
-                    "num_updates":page_range.num_updates,
-                }
-                self.write_python_dict_as_file(page_range_path, page_range_header, "header.pkl")
+        os.makedirs(page_ranges_path, exist_ok=True)
+        for page_range_index in range(len(table.page_ranges)):
+            page_range_path = os.path.join(page_ranges_path, str(page_range_index))
+            page_range: PageRange = table.page_ranges[page_range_index]
+            
+            page_range_header = {
+                "table_name": table.name,
+                "page_range_index": page_range_index,
+                "num_columns": page_range.num_columns,
+                "num_base_records": page_range.num_base_records,
+                "num_updates":page_range.num_updates,
+            }
+            os.makedirs(page_range_path, exist_ok=True)
+            self.write_python_dict_as_file(page_range_path, page_range_header, "header.pkl")
                 
 
     #call? read_file_as_python_dict*** use for pkl NO index
@@ -88,8 +89,8 @@ class Disk():
         if not os.path.exists(index_path):
             return None
         with open(index_path, "rb") as f:
-                index_object = pickle.load(f)
-        
+            index_object = pickle.load(f)
+
         # Builds table from data in table directory
         table = Table(table_header["name"], table_header["num_columns"], table_header["key"], bufferpool)
         table.next_rid = table_header["next_rid"]
@@ -97,7 +98,7 @@ class Disk():
         table.index = index_object
 
         # Fills table with page ranges stored in its directory
-        page_ranges_path = os.path.join(table_header, "page_ranges") 
+        page_ranges_path = os.path.join(table_path, "page_ranges") 
         for page_range_index in sorted(os.listdir(page_ranges_path)):
             page_range_header = self.read_file_as_python_dict(page_ranges_path, page_range_index)
             page_range = PageRange(page_range_header["table_name"], page_range_header["page_range_index"], page_range_header["num_columns"], bufferpool)
@@ -159,7 +160,7 @@ class Disk():
     def write_logical_page(self, table_name, page_range_index, record_type, logical_page_index, logical_page: LogicalPage):
         logical_pages_dir = "base_pages" if record_type == Config.BASE_RECORD else "tail_pages"
         logical_page_path = os.path.join(self.db_path, table_name, "page_ranges", str(page_range_index), logical_pages_dir, str(logical_page_index))
-        os.makedirs(os.path.dirname(logical_page_path), exist_ok=True)
+        os.makedirs(logical_page_path, exist_ok=True)
 
         logical_page_header = {
             "num_columns": logical_page.num_columns,
@@ -168,16 +169,18 @@ class Disk():
         self.write_python_dict_as_file(logical_page_path, logical_page_header, "header.pkl")
 
         physical_pages_path = os.path.join(logical_page_path, "physical_pages")
-        for column_index in logical_page.num_columns:
+        for column_index in range(logical_page.num_columns):
             physical_page_path = os.path.join(physical_pages_path, str(column_index))
             physical_page = logical_page.physical_pages[column_index]
 
             physical_page_header = {
                 "num_records": physical_page.num_records,
             }
+            
+            os.makedirs(physical_page_path, exist_ok=True)
             self.write_python_dict_as_file(physical_page_path, physical_page_header, "header.pkl")
 
-            physical_page_data_path = os.join(physical_page_path, "physical_page.data")
+            physical_page_data_path = os.path.join(physical_page_path, "physical_page.data")
             with open(physical_page_data_path, "wb") as f:
                 f.write(physical_page.data)
 
@@ -217,3 +220,7 @@ class Disk():
 
         with open(file_path, "wb") as f:
             pickle.dump(json_data, f)
+
+    # Return bool whether path exists on disk
+    def path_exists(self):
+        return self.db_path != None and os.path.exists(self.db_path)

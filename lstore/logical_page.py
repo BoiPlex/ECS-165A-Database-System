@@ -5,7 +5,7 @@ from lstore.physical_page import PhysicalPage
 # Represents either a base page or tail page (each set of columns), base/tail page is effectively a row
 class LogicalPage:
     
-    # num_columns should include the 4 meta-columns
+    # num_columns should include the meta-columns
     def __init__(self, num_columns):
         self.num_columns = num_columns
 

@@ -72,6 +72,7 @@ class Query:
     # Returns True if update is successful
     # Returns False if no records exist with given key or if the target record cannot be accessed due to 2PL locking
     """
+    
     def update(self, primary_key, *columns):
         base_rid = self.table.index.key_to_rid(self.table.key, primary_key)
         success = self.table.update_record(base_rid, columns)

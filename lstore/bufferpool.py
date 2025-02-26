@@ -83,9 +83,9 @@ class Bufferpool():
     # Write back all dirty pages (called when closing the db and saving to disk)
     def write_back_all_dirty_frames(self):
         for location, frame in self.frames.items(): 
-            if frame.dirty: 
+            if frame.dirty:
                 table_name, page_range_index,record_type, logical_page_index = location
-                self.disk.write_logical_pages(table_name,page_range_index,record_type,logical_page_index,frame.logical_page) #uses stored location modifying the logical page back to disk
+                self.disk.write_logical_page(table_name, page_range_index, record_type, logical_page_index, frame.logical_page) #uses stored location modifying the logical page back to disk
                 frame.dirty = False
 
     def pin_frame(self, frame):
