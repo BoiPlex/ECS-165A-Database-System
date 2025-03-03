@@ -47,8 +47,11 @@ class Database():
     :param key: int             #Index of table key in columns
     """
     def create_table(self, name, num_columns, key_index):        
-        if not self.disk.path_exists() or name in self.tables:
-            return None
+        # if not self.disk.path_exists():
+        #     return None
+        
+        if name in self.tables:
+            return self.tables[name]
 
         table = Table(name, num_columns, key_index, self.bufferpool)
         self.tables[name] = table
@@ -60,7 +63,10 @@ class Database():
     # Once deleted, the table won't be saved to disk since it's not in self.tables anymore
     """
     def drop_table(self, name):
-        if not self.disk.path_exists() or name not in self.tables:
+        # if not self.disk.path_exists():
+        #     return
+        
+        if name not in self.tables:
             return
         
         del self.tables[name]

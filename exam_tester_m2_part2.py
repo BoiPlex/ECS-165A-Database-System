@@ -35,7 +35,7 @@ for _ in range(number_of_updates):
             updated_records[key][j] = value
 keys = sorted(list(records.keys()))
 
-# Check records that were presisted in part 1
+# Check records that were persisted in part 1
 for key in keys:
     record = query.select_version(key, 0, [1, 1, 1, 1, 1], -1)[0]
     error = False
@@ -46,7 +46,7 @@ for key in keys:
         print('select error on', key, ':', record, ', correct:', records[key])
 print("Select for version -1 finished")
 
-# Check records that were presisted in part 1
+# Check records that were persisted in part 1
 for key in keys:
     record = query.select_version(key, 0, [1, 1, 1, 1, 1], -2)[0]
     error = False

@@ -15,6 +15,7 @@ class PageRange:
         # self.num_tail_pages = 0 # Tracks number of tail pages in page range
 
         self.num_base_records = 0 # Tracks number of base records in page range 
+        self.num_tail_records = 0
         self.num_updates = 0 # Merge the page range once it reaches Config.NUM_UPDATES_FOR_MERGE
 
     def has_capacity(self):
@@ -97,7 +98,7 @@ class PageRange:
     # Iterate through the base pages to find one with space
     # Returns base_page_index if successful, -1 otherwise
     def find_free_logical_page(self, record_type):
-        num_logical_records = self.num_base_records if record_type == Config.BASE_RECORD else self.num_updates
+        num_logical_records = self.num_base_records if record_type == Config.BASE_RECORD else self.num_tail_records
         free_logical_page_index = num_logical_records // Config.MAX_RECORDS_PER_LOGICAL_PAGE
         
         return free_logical_page_index

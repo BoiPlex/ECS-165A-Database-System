@@ -48,7 +48,7 @@ def correctness_tester1():
         else:
             print("Error[0]")
     except Exception as e:
-        print("Wrong[0]")
+        print(f"Wrong[0]: {e}")
 
     try:
         # select on columns without index and return 1 record
@@ -70,7 +70,7 @@ def correctness_tester1():
             else:
                 print("Error[2]")
         else:
-            print("Error[2]")
+            print("Error[2] Result Length != 4")
     except Exception as e:
         print("Wrong[2]")
 
@@ -168,7 +168,7 @@ def correctness_tester2():
         else:
             print("Error[8]")
     except Exception as e:
-        print("Wrong[8]")
+        print("Wrong[8]", e)
 
 
 def generte_keys():

@@ -61,6 +61,7 @@ class Disk():
                 "page_range_index": page_range_index,
                 "num_columns": page_range.num_columns,
                 "num_base_records": page_range.num_base_records,
+                "num_tail_records": page_range.num_tail_records,
                 "num_updates":page_range.num_updates,
             }
             os.makedirs(page_range_path, exist_ok=True)
@@ -83,6 +84,8 @@ class Disk():
         # Gets table_header and page_directory data
         table_header = self.read_file_as_python_dict(table_path, "header.pkl")
         page_directory = self.read_file_as_python_dict(table_path, "page_directory.pkl")
+        page_directory = {int(k): tuple(v) for k, v in page_directory.items()} # Convert to int: tuple
+        
 
         # Ensures that path to "index.pkl" exists - returns None if it does not, builds index_object if it does
         index_path = os.path.join(table_path, "index.pkl")
@@ -100,9 +103,11 @@ class Disk():
         # Fills table with page ranges stored in its directory
         page_ranges_path = os.path.join(table_path, "page_ranges") 
         for page_range_index in sorted(os.listdir(page_ranges_path)):
-            page_range_header = self.read_file_as_python_dict(page_ranges_path, page_range_index)
+            page_range_path = os.path.join(page_ranges_path, str(page_range_index))
+            page_range_header = self.read_file_as_python_dict(page_range_path, "header.pkl")
             page_range = PageRange(page_range_header["table_name"], page_range_header["page_range_index"], page_range_header["num_columns"], bufferpool)
             page_range.num_base_records = page_range_header["num_base_records"]
+            page_range.num_tail_records = page_range_header["num_tail_records"]
             page_range.num_updates = page_range_header["num_updates"]
             table.page_ranges.append(page_range)
         
@@ -134,21 +139,20 @@ class Disk():
             physical_page_path = os.path.join(physical_pages_path, str(column_index))
             if not os.path.isdir(physical_page_path):
                 continue
-            physical_page_header_path = os.path.join(physical_page_path, "header.pkl")
             physical_page_data_path = os.path.join(physical_page_path, "physical_page.data")
             
-            physical_page_header = self.read_file_as_python_dict(physical_page_header_path, "header.pkl")
+            physical_page_header = self.read_file_as_python_dict(physical_page_path, "header.pkl")
             if not physical_page_header:
                 return None
             
             if not os.path.exists(physical_page_data_path):
                 return None
             with open(physical_page_data_path, "rb") as f:
-                physical_page_data = pickle.load(f)
+                physical_page_data = bytearray(f.read())
             
             physical_page = PhysicalPage()
             physical_page.num_records = physical_page_header["num_records"]
-            physical_page.data = bytearray(physical_page_data)
+            physical_page.data = physical_page_data
 
             physical_pages.append(physical_page)
             
@@ -224,3 +228,4 @@ class Disk():
     # Return bool whether path exists on disk
     def path_exists(self):
         return self.db_path != None and os.path.exists(self.db_path)
+    

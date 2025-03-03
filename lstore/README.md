@@ -1,22 +1,25 @@
 Group Name: The Data Avengers
 
-Grading: Our group chose to be graded 100% on the auto-grader
-
-Extra Changes: We added 4 new aggregation methods to query.py: max, min, count, avg
+Grading: Our group chose to be graded 50% on the auto-grader
 
 Attribution section:
 - Karim Shami:
     - 25%
     - System Architect
+    - Designed the disk/bufferpool/merge and worked on them
 - Leif Good-Olson:
     - 25%
-    - Data Model Developer
+    - Merge Developer
+    - Worked on the merge and all other parts of the project
 - Matthew Abalos:
-    - 20%
-    - Bufferpool Management Developer
+    - 17.5%
+    - Bufferpool Developer
+    - Created the bufferpool and repurposed the code to use it
+- Kavya Sasikumar:
+    - 17.5%
+    - Disk Developer
+    - Developed the disk read/write operations
 - Sri Lakshmi:
     - 15%
-    - Query Interface Developer
-- Kavya Sasikumar:
-    - 15%
     - Tester
+    - Debugged the code to pass test cases

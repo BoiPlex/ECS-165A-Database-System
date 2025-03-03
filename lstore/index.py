@@ -33,7 +33,6 @@ class Index:
             #     rid_list.append(self.indices[column][value])
         
         return rid_list
-        
 
     """
     # Returns the RIDs of all records with values in column "column" between "begin" and "end"
@@ -51,11 +50,16 @@ class Index:
     # optional: Creates index on target column in the table. Searches for all RIDs mapping it's column values to their each RID later storing them 
     """
 
-    def create_index(self, rid, columns):
+    def create_index_with_rid(self, rid, columns):
         for column_index, column_value in enumerate(columns):
             if column_value not in self.indices[column_index]: # Creates new entries for values that aren't in the index
                 self.indices[column_index][column_value] = []
             self.indices[column_index][column_value].append(rid)
+
+    def create_index(self, column):
+        # self.indices[column] = OOBTree()
+        # Already created indexes for all columns
+        return
             
         
     """

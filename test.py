@@ -17,17 +17,17 @@ table = db.create_table("imposter", 3, 0)
 query = Query(table)
 
 # Insert
-query.insert(1, 4, 18) # rid=1
+# query.insert(1, 4, 18) # rid=1
 
-query.update(1, None, 12, 13) # rid=2
-query.update(1, None, 14, 15) # rid=3
-query.update(1, None, 16, 17) # rid=4
+# query.update(1, None, 12, 13) # rid=2,3
+# query.update(1, None, 14, 15) # rid=4,5
 
-record_list = query.select_version(1, 0, [1, 1, 1], 0)
-for record in record_list:
-    print(record.columns)
 
-db.close() 
+for i in range(0, -6, -1):
+    print(query.select_version(1, 0, [1, 1, 1], i)[0].columns)
+
+
+db.close()
 print("close the database and write it to disk")
 
 # # db_reopened = Database()
