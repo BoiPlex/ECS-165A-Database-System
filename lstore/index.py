@@ -56,10 +56,23 @@ class Index:
                 self.indices[column_index][column_value] = []
             self.indices[column_index][column_value].append(rid)
 
+
+
+
+
     def create_index(self, column):
-        # self.indices[column] = OOBTree()
-        # Already created indexes for all columns
-        return
+        """ Creates an index for a specific column if it doesn't exist. """
+        if self.indices[column] is None:
+            self.indices[column] = OOBTree()
+
+        # Populate the index with existing records
+        for rid, page_info in self.table.page_directory.items():  
+            value = self.table.get_column_value(rid, column)  # gets column value
+
+            if value not in self.indices[column]:
+                self.indices[column][value] = set()  # initialize set for RIDs
+            
+            self.indices[column][value].add(rid)  # add rid to index
             
         
     """
@@ -68,7 +81,7 @@ class Index:
 
     def drop_index(self, column):
         self.indices[column].clear()
-        
+
  #################
 
     # def write_index_to_disk(self):
