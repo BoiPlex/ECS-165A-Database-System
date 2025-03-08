@@ -3,7 +3,6 @@ from lstore.query import Query
 
 from random import choice, randint, sample, seed
 
-# 
 
 records = {}
 number_of_records = 1000
