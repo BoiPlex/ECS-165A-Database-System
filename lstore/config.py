@@ -23,7 +23,7 @@ class Config:
     NUM_FRAMES = 500
 
     # Merging
-    NUM_UPDATES_FOR_MERGE = 500
+    NUM_UPDATES_FOR_MERGE = 100000
 
 
 """

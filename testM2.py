@@ -1,8 +1,8 @@
 from lstore.db import Database
 from lstore.query import Query
+from helper import remove_dir_if_exists
 
 from random import choice, randint, sample, seed
-
 
 records = {}
 number_of_records = 1000
@@ -76,7 +76,7 @@ def correctness_tester1():
     try:
         # select on columns without index and return empty list
         result = reorganize_result(query.select(10, 2, [1,1,1,1,1]))
-        print(result)
+        # print(result)
         if len(result) == 0:
             print("PASS[3]")
         else:
@@ -141,11 +141,14 @@ def correctness_tester1():
             print("Error[7]")
     except Exception as e:
         print("Wrong[7]")
+    
+    remove_dir_if_exists("./CT")
 
 def correctness_tester2():
     # different primary key
     try:
         db = Database()
+        db.open("./FUCK") # I added this line
         test_table3 = db.create_table("test3", 5, 2)
         records3 = [
             [1, 1, 0, 2, 1],
@@ -161,13 +164,15 @@ def correctness_tester2():
         for record in records3:
             query3.insert(*record)
         result = query3.sum(3, 5, 4)
-        print(result)
+        # print(result)
         if result == 5:
             print("PASS[8]")
         else:
             print("Error[8]")
     except Exception as e:
         print("Wrong[8]")
+    
+    remove_dir_if_exists("./FUCK")
 
 
 def generte_keys():
@@ -322,9 +327,8 @@ def durability_tester2():
         print("Aggregate finished")
 
         db.close()
-
-
-
+    
+    remove_dir_if_exists('./M2')
 
 def merging_tester():
     # Without Merging, the select would be extremely slow.
@@ -355,6 +359,8 @@ def merging_tester():
             time += 1
             for key in keys:
                 query.select(key, 0, [1,1,1,1,1])
+    
+    remove_dir_if_exists("./MT")
 
 from timeit import default_timer as timer
 from decimal import Decimal
@@ -364,11 +370,11 @@ import glob
 import traceback
 import shutil   
 
-m2tests = [1,0,0]
+m2tests = [1,1,1]
 if m2tests[0] == 1:
     print("==========correctness tester===============")
     correctness_tester1() 
-    correctness_tester2() 
+    correctness_tester2()
 if m2tests[1] == 1:
     print("==========durability tester================")
     generte_keys()

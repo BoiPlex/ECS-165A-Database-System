@@ -61,7 +61,7 @@ class Query:
     """
     def select_version(self, search_key, search_key_index, projected_columns_index, relative_version):
         rid_list = self.table.index.locate(search_key_index, search_key)
-        record_list = [self.table.read_record(Config.BASE_RECORD, rid) for rid in rid_list]        
+        record_list = [self.table.read_record(rid) for rid in rid_list]        
         record_list = self.get_record_list_lineage(record_list, relative_version)
         
         return self.filter_by_projected_columns(record_list, projected_columns_index)
@@ -108,7 +108,7 @@ class Query:
 
         record_list = []
         for rid in rid_list:
-            record = self.table.read_record(Config.BASE_RECORD, rid)
+            record = self.table.read_record(rid)
             record_list.append(record)
         
         record_list = self.get_record_list_lineage(record_list, relative_version)
@@ -154,7 +154,7 @@ class Query:
                 current_version -= 1
 
             record_type = Config.BASE_RECORD if current_rid == base_rid else Config.TAIL_RECORD
-            new_record_list[i] = self.table.read_record(record_type, current_rid)
+            new_record_list[i] = self.table.read_record(current_rid)
 
         return new_record_list
 

@@ -153,7 +153,7 @@ def normal_tester():
 
 
 def extended_tester():
-    print("Checking exam M3 extended tester");
+    print("Checking exam M3 extended tester")
     global score
     global normal_p1, normal_p2, extended_p1, extended_p2
     if extended_p1:

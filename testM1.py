@@ -1,13 +1,15 @@
 from lstore.db import Database
 from lstore.query import Query
+from helper import remove_dir_if_exists
 
 from random import choice, randint, sample, seed
 
 score = 0
 def speed_tester1():
-    print("Checking exam M1 normal tester");
+    print("Checking exam M1 normal tester")
     global score
     db = Database()
+    db.open("./M1-speed1")
     # Create a table  with 5 columns
     #   Student Id and 4 grades
     #   The first argument is name of the table
@@ -91,11 +93,14 @@ def speed_tester1():
                 pass
     score = score + 15
 
+    remove_dir_if_exists("./M1-speed1")
+
 
 def speed_tester2():
     print("\n\nChecking exam M1 extended tester");
     global score
     db = Database()
+    db.open("./M1-speed2")
     # Create a table  with 5 columns
     #   Student Id and 4 grades
     #   The first argument is name of the table
@@ -195,9 +200,12 @@ def speed_tester2():
         print(e)
     db.close()
 
+    remove_dir_if_exists("./M1-speed2")
+
 def correctness_tester():
     global score
     db = Database()
+    db.open("./M1-correctness")
     grades_table = db.create_table('Grades', 5, 0)
 
     # create a query class for the grades table
@@ -260,6 +268,8 @@ def correctness_tester():
         and result[0].columns[4] == records[3][4]:
         score += 5
         print("[4] pass")
+    
+    remove_dir_if_exists("./M1-correctness")
 
 from timeit import default_timer as timer
 from decimal import Decimal

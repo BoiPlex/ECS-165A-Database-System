@@ -92,13 +92,14 @@ class Disk():
         if not os.path.exists(index_path):
             return None
         with open(index_path, "rb") as f:
-            index_object = pickle.load(f)
+            index = pickle.load(f)
 
         # Builds table from data in table directory
         table = Table(table_header["name"], table_header["num_columns"], table_header["key"], bufferpool)
         table.next_rid = table_header["next_rid"]
         table.page_directory = page_directory
-        table.index = index_object
+        index.table = table
+        table.index = index
 
         # Fills table with page ranges stored in its directory
         page_ranges_path = os.path.join(table_path, "page_ranges") 

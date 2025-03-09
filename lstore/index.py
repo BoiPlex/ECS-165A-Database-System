@@ -6,9 +6,9 @@ import pickle
 
 class Index:
 
-    def __init__(self, num_columns):
-        self.num_columns = num_columns
-        self.indices = [OOBTree() for _ in range(self.num_columns)]
+    def __init__(self, table):
+        self.table = table # Exclude when serializing
+        self.indices = [OOBTree() for _ in range(self.table.num_columns)]
 
     """
     # Returns the rid of the record of the given key value. Returns -1 if not found.
@@ -55,24 +55,27 @@ class Index:
             if column_value not in self.indices[column_index]: # Creates new entries for values that aren't in the index
                 self.indices[column_index][column_value] = []
             self.indices[column_index][column_value].append(rid)
-
-
-
+    
+    def delete_index_entry(self, rid, columns):
+        for column_index, column_value in enumerate(columns):
+            if column_value in self.indices[column_index]: # Deletes entries for values that is in the index
+                del self.indices[column_index][column_value]
 
 
     def create_index(self, column):
         """ Creates an index for a specific column if it doesn't exist. """
-        if self.indices[column] is None:
-            self.indices[column] = OOBTree()
+        return
+        # if self.indices[column] is None:
+        #     self.indices[column] = OOBTree()
 
-        # Populate the index with existing records
-        for rid, page_info in self.table.page_directory.items():  
-            value = self.table.get_column_value(rid, column)  # gets column value
+        # # Populate the index with existing records
+        # for rid, page_info in self.table.page_directory.items():
+        #     value = self.table.get_column_value_nonmeta(rid, column)  # gets column value
 
-            if value not in self.indices[column]:
-                self.indices[column][value] = set()  # initialize set for RIDs
+        #     if value not in self.indices[column]:
+        #         self.indices[column][value] = set()  # initialize set for RIDs
             
-            self.indices[column][value].add(rid)  # add rid to index
+        #     self.indices[column][value].append(rid)  # add rid to index
             
         
     """
@@ -80,7 +83,23 @@ class Index:
     """
 
     def drop_index(self, column):
-        self.indices[column].clear()
+        return
+        # self.indices[column].clear()
+
+    # ----------------------------------------------------------------
+
+    def __getstate__(self):
+        # Create a copy of the instance's dictionary (attributes)
+        state = self.__dict__.copy()
+        if 'table' in state:
+            del state['table']  # Exclude the table reference from being serialized
+        return state
+
+    def __setstate__(self, state):
+        # Restore the state and set table to None (or handle as needed)
+        self.__dict__.update(state)
+        self.table = None  # Ensure table is None after deserialization
+
 
  #################
 
