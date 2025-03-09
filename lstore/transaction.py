@@ -8,7 +8,7 @@ class Transaction:
     """
     def __init__(self):
         self.queries = []
-        pass
+        self.rollback_log = [] # stores original values for rollback
 
     """
     # Adds the given query to this transaction
@@ -20,6 +20,7 @@ class Transaction:
     def add_query(self, query, table, *args):
         self.queries.append((query, args))
         # use grades_table for aborting
+        # TODO
 
         
     # If you choose to implement this differently this method must still return True if transaction commits or False on abort
@@ -33,7 +34,7 @@ class Transaction:
 
     
     def abort(self):
-        #TODO: do roll-back and any other necessary operations
+        # TODO: do roll-back and any other necessary operations
         return False
 
     
