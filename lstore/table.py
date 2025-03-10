@@ -4,6 +4,7 @@ from lstore.index import Index
 from lstore.page_range import PageRange
 from lstore.logical_page import LogicalPage
 from lstore.physical_page import PhysicalPage
+from lstore.lockmanager import LockManager
 
 from time import time
 import threading
@@ -44,6 +45,9 @@ class Table:
         self.merge_cond = threading.Condition(self.merge_lock)
         merge_thread = threading.Thread(target=self.__merge, daemon=True)
         merge_thread.start()
+
+        # Concurrency/locking
+        self.lock_manager = LockManager()
 
     # Reads base/tail record (includes meta-columns)
     # rid starts at 1 as defined above

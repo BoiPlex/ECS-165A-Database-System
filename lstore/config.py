@@ -25,6 +25,9 @@ class Config:
     # Merging
     NUM_UPDATES_FOR_MERGE = 100000
 
+    # Lock types
+    LOCK_TYPE_SHARED = 0
+    LOCK_TYPE_EXCLUSIVE = 1
 
 """
 Indirection col: Points to tail record change (when creating, points to itself and should be same as RID. When updated (record update created in tail page), should point to that new record)

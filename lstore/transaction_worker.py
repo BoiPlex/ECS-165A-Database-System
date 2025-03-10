@@ -1,6 +1,8 @@
 from lstore.table import Table, Record
 from lstore.index import Index
 import threading
+import time
+import random
 
 class TransactionWorker:
 
@@ -12,6 +14,7 @@ class TransactionWorker:
         self.transactions = transactions
         self.result = 0
         self.thread = None
+        
 
     
     """
@@ -25,8 +28,6 @@ class TransactionWorker:
     Runs all transaction as a thread
     """
     def run(self):
-        # TODO
-        # here you need to create a thread and call __run
         self.thread = threading.Thread(target=self.__run)
         self.thread.start()
     
@@ -35,15 +36,22 @@ class TransactionWorker:
     Waits for the worker to finish
     """
     def join(self):
-        # TODO
         if self.thread:
             self.thread.join()
 
 
     def __run(self):
         for transaction in self.transactions:
-            # each transaction returns True if committed or False if aborted
-            self.stats.append(transaction.run())
+            while True:
+                # each transaction returns True if committed or False if aborted
+                success = transaction.run()
+                if success:
+                    self.stats.append(True)
+                    break
+                else:
+                    print("Transaction aborted. Retrying...")
+                    time.sleep(random.uniform(0.1, 0.5)) # Wait for a randomized delay before retrying
+                    
         # stores the number of transactions that committed
         self.result = len(list(filter(lambda x: x, self.stats)))
 

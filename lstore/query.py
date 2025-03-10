@@ -11,7 +11,7 @@ class Query:
     Any query that crashes (due to exceptions) should return False
     """
     def __init__(self, table):
-        self.table = table
+        self.table: Table = table
     
     """
     # internal Method
@@ -19,22 +19,56 @@ class Query:
     # Returns True upon successful deletion
     # Return False if record doesn't exist or is locked due to 2PL
     """
-    def delete(self, primary_key):
+    def delete(self, primary_key, transaction_id=None):
         rid = self.table.index.key_to_rid(self.table.key, primary_key)
+        
+        if transaction_id:
+            acquired = self.table.lock_manager.lock_record(rid, transaction_id, Config.LOCK_TYPE_EXCLUSIVE)
+            if not acquired:
+                return False
+
         if rid < 1: # Can't delete record that's already marked for deletion (rid of 0)
             return False
         
         return self.table.delete_record(rid)
     
+    def undo_delete(self, rid, columns, location, transaction_id=None):
+        if transaction_id:
+            acquired = self.table.lock_manager.lock_record(rid, transaction_id, Config.LOCK_TYPE_EXCLUSIVE)
+            if not acquired:
+                return False
+        
+        self.table.index.create_index_with_rid(rid, columns)
+        # location stores (page_range_index, record_type, base_page_index, base_offset_index)
+        self.table.page_directory[rid] = location
+        return True
+            
     
     """
     # Insert a record with specified columns
     # Return True upon successful insertion
     # Returns False if insert fails for whatever reason
     """
-    def insert(self, *columns):
+    def insert(self, *columns, transaction_id=None):
         return self.table.create_record(columns)
 
+    """
+    # Update a record with specified key and columns
+    # Returns True if update is successful
+    # Returns False if no records exist with given key or if the target record cannot be accessed due to 2PL locking
+    """
+    def update(self, primary_key, *columns, transaction_id=None):
+        base_rid = self.table.index.key_to_rid(self.table.key, primary_key)
+        
+        if transaction_id:
+            acquired = self.table.lock_manager.lock_record(base_rid, transaction_id, Config.LOCK_TYPE_EXCLUSIVE)
+            if not acquired:
+                return False
+        
+        success = self.table.update_record(base_rid, columns)
+        if not success:
+            return False
+        return True
     
     """
     # Read matching record with specified search key
@@ -45,8 +79,8 @@ class Query:
     # Returns False if record locked by TPL
     # Assume that select will never be called on a key that doesn't exist
     """
-    def select(self, search_key, search_key_index, projected_columns_index):
-        return self.select_version(search_key, search_key_index, projected_columns_index, 0)
+    def select(self, search_key, search_key_index, projected_columns_index, transaction_id=None):
+        return self.select_version(search_key, search_key_index, projected_columns_index, 0, transaction_id)
 
     
     """
@@ -59,26 +93,19 @@ class Query:
     # Returns False if record locked by TPL
     # Assume that select will never be called on a key that doesn't exist
     """
-    def select_version(self, search_key, search_key_index, projected_columns_index, relative_version):
-        rid_list = self.table.index.locate(search_key_index, search_key)
+    def select_version(self, search_key, search_key_index, projected_columns_index, relative_version, transaction_id=None):
+        rid_list = self.table.index.locate(search_key_index, search_key) # base rids
+        
+        if transaction_id:
+            for rid in rid_list:
+                acquired = self.table.lock_manager.lock_record(rid, transaction_id, Config.LOCK_TYPE_SHARED)
+                if not acquired:
+                    return False
+        
         record_list = [self.table.read_record(rid) for rid in rid_list]        
         record_list = self.get_record_list_lineage(record_list, relative_version)
         
         return self.filter_by_projected_columns(record_list, projected_columns_index)
-
-    
-    """
-    # Update a record with specified key and columns
-    # Returns True if update is successful
-    # Returns False if no records exist with given key or if the target record cannot be accessed due to 2PL locking
-    """
-    def update(self, primary_key, *columns):
-        base_rid = self.table.index.key_to_rid(self.table.key, primary_key)
-        success = self.table.update_record(base_rid, columns)
-        if not success:
-            return False
-        return True
-
     
     """
     :param start_range: int         # Start of the key range to aggregate 
@@ -88,8 +115,8 @@ class Query:
     # Returns the summation of the given range upon success
     # Returns False if no record exists in the given range
     """
-    def sum(self, start_range, end_range, aggregate_column_index):
-        return self.sum_version(start_range, end_range, aggregate_column_index, 0)
+    def sum(self, start_range, end_range, aggregate_column_index, transaction_id=None):
+        return self.sum_version(start_range, end_range, aggregate_column_index, 0, transaction_id)
 
     
     """
@@ -101,10 +128,16 @@ class Query:
     # Returns the summation of the given range upon success
     # Returns False if no record exists in the given range
     """
-    def sum_version(self, start_range, end_range, aggregate_column_index, relative_version):
+    def sum_version(self, start_range, end_range, aggregate_column_index, relative_version, transaction_id=None):
         rid_list = self.table.index.locate_range(start_range, end_range, self.table.key)
         if len(rid_list) == 0:
             return False
+        
+        if transaction_id:
+            for rid in rid_list:
+                acquired = self.table.lock_manager.lock_record(rid, transaction_id, Config.LOCK_TYPE_SHARED)
+                if not acquired:
+                    return False
 
         record_list = []
         for rid in rid_list:
