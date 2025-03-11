@@ -40,7 +40,7 @@ class Transaction:
 
         # use table for aborting
         # TODO
-        if query is Query.delete:
+        if getattr(query, "__func__", query) is Query.delete:
             primary_key, = args # unpack args to 1 variable
 
             # --------------------
@@ -63,17 +63,17 @@ class Transaction:
             rollback_lock_tuple = (record_lock, Config.LOCK_TYPE_EXCLUSIVE)
             self.rollback_queries.append((Query.rollback_delete, rollback_args, rollback_lock_tuple))
             
-        elif query is Query.insert:
+        elif getattr(query, "__func__", query) is Query.insert:
             columns = args # args tuple is exactly equal to columns
             primary_key = columns[table.key]
 
             # Insert's rollback just does a delete
             # sussy balls i love fortnite <3 IMPORTANT!!!
-            rollback_args = (primary_key)
+            rollback_args = (primary_key,)
             rollback_lock_tuple = self.get_query_locks(Query.delete, rollback_args, table)[0]
             self.rollback_queries.append((Query.delete, rollback_args, rollback_lock_tuple))
         
-        elif query is Query.update:
+        elif getattr(query, "__func__", query) is Query.update:
             primary_key, *columns = args
 
             # Update's rollback sets base record's indirection from new latest back to original latest
@@ -160,38 +160,42 @@ class Transaction:
     Return list of tuple(s), each is (Cock, cock_type, lube)
     """
     def get_query_locks(self, query, args, table):
-        if query is Query.select or query is Query.select_version:
+        if getattr(query, "__func__", query) is Query.select or getattr(query, "__func__", query) is Query.select_version:
+            record_locks = []
             search_key, search_key_index, projected_columns_index = args[:3] # haha :3 we are so helpful
             rids = table.index.locate(search_key_index, search_key)
             for rid in rids:
                 record_lock: Lock = self.lock_manager.get_lock(rid)
-                self.locks.append((record_lock, Config.LOCK_TYPE_SHARED))
+                record_locks.append((record_lock, Config.LOCK_TYPE_SHARED))
+            return record_locks
         
-        elif query is Query.sum or query is Query.sum_version:
+        elif getattr(query, "__func__", query) is Query.sum or getattr(query, "__func__", query) is Query.sum_version:
+            record_locks = []
             start_range, end_range, aggregate_column_index = args[:3]
             rids = table.index.locate(search_key_index, search_key)
             for rid in rids:
                 record_lock: Lock = self.lock_manager.get_lock(rid)
-                self.locks.append((record_lock, Config.LOCK_TYPE_SHARED))
+                record_locks.append((record_lock, Config.LOCK_TYPE_SHARED))
+            return record_locks
             
-        elif query is Query.delete:
+        elif getattr(query, "__func__", query) is Query.delete:
             primary_key = args[0]
             rid = table.index.key_to_rid(table.key, primary_key)
             record_lock: Lock = self.lock_manager.get_lock(rid)
-            self.locks.append((record_lock, Config.LOCK_TYPE_EXCLUSIVE))
+            return [(record_lock, Config.LOCK_TYPE_EXCLUSIVE)]
                 
-        elif query is Query.insert:
+        elif getattr(query, "__func__", query) is Query.insert:
             columns = args
-            primary_key = columns[self.table.key]
+            primary_key = columns[table.key]
             rid = table.index.key_to_rid(table.key, primary_key)
             record_lock: Lock = self.lock_manager.get_lock(rid)
-            self.locks.append((record_lock, Config.LOCK_TYPE_EXCLUSIVE))
+            return [(record_lock, Config.LOCK_TYPE_EXCLUSIVE)]
             
-        elif query is Query.update:
+        elif getattr(query, "__func__", query) is Query.update:
             primary_key, *columns = args
             rid = table.index.key_to_rid(table.key, primary_key)
             record_lock: Lock = self.lock_manager.get_lock(rid)
-            self.locks.append((record_lock, Config.LOCK_TYPE_EXCLUSIVE))
+            return [(record_lock, Config.LOCK_TYPE_EXCLUSIVE)]
         
         else:
             raise Exception("Unknown query type")
