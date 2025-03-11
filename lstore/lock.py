@@ -1,3 +1,4 @@
+from lstore.config import Config
 import threading
 
 class Lock:
@@ -7,8 +8,15 @@ class Lock:
         self.owners = set()
         self.lock = threading.Lock() # Prevent multiple threads from accessing this lock object simultaneously
 
+    # General function that acquires either a shared or exclusive lock
+    def acquire_lock(self, transaction_id, lock_type):
+        if lock_type == Config.LOCK_TYPE_SHARED:
+            return self.acquire_shared_lock(transaction_id)
+        else:
+            return self.acquire_exclusive_lock(transaction_id)
+    
     # For reading, return true/false if able/unable to acquire lock
-    def get_shared_lock(self, transaction_id):
+    def acquire_shared_lock(self, transaction_id):
         with self.lock:
             if self.writing_count == 0:
                 self.reading_count += 1
@@ -17,7 +25,7 @@ class Lock:
             return False
 
     # For writing, return true/false if able/unable to acquire lock
-    def get_exclusive_lock(self, transaction_id):
+    def acquire_exclusive_lock(self, transaction_id):
         with self.lock:
             if self.writing_count == 0 and self.reading_count == 0:
                 self.writing_count = 1

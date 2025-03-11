@@ -41,32 +41,38 @@ class LockManager:
 	  3.  Aborting if we can't upgrade a shared lock to exclusive ("S" to "X") (No-Wait policy)
 	  4. Returning true if lock is acquired
 	"""
-	def lock_record(self, base_rid, transaction_id, lock_type):
+	def get_lock(self, base_rid):
 		with self.lock_directory_lock:
 			if base_rid not in self.lock_directory:
-					self.lock_directory[base_rid] = Lock()
+				self.lock_directory[base_rid] = Lock()
+			return self.lock_directory[base_rid]
 		
-		if lock_type == Config.LOCK_TYPE_SHARED:
-			return self.lock_directory[base_rid].get_shared_lock(transaction_id)
-		else:
-			return self.lock_directory[base_rid].get_exclusive_lock(transaction_id)
+	# def lock_record(self, base_rid, transaction_id, lock_type):
+	# 	with self.lock_directory_lock:
+	# 		if base_rid not in self.lock_directory:
+	# 			self.lock_directory[base_rid] = Lock()
+		
+	# 	if lock_type == Config.LOCK_TYPE_SHARED:
+	# 		return self.lock_directory[base_rid].get_shared_lock(transaction_id)
+	# 	else:
+	# 		return self.lock_directory[base_rid].get_exclusive_lock(transaction_id)
 
-	"""
-	The unlock_record() function unlocks or releases a record that is held by a transaction if it is in self.locks
-	Not necessary I guess
-	"""
-	def unlock_record(self, base_rid, transaction_id):
-		with self.lock_directory_lock:
-			if base_rid not in self.lock_directory:
-				return False
-		return self.lock_directory[base_rid].release_lock(transaction_id)
+	# """
+	# The unlock_record() function unlocks or releases a record that is held by a transaction if it is in self.locks
+	# Not necessary I guess
+	# """
+	# def unlock_record(self, base_rid, transaction_id):
+	# 	with self.lock_directory_lock:
+	# 		if base_rid not in self.lock_directory:
+	# 			return False
+	# 	return self.lock_directory[base_rid].release_lock(transaction_id)
 		
-	"""
-	The unlock_all_records() function released all locks held by a specific transaction, as opposed to a lock on a specific record as is above
-	"""
-	# Def inefficient. Do we care??
-	def unlock_all_records(self, transaction_id):
-		with self.lock_directory_lock:
-			for _, lock in self.lock_directory.items():
-				if transaction_id in lock.owners:
-					lock.release_lock(transaction_id)
+	# """
+	# The unlock_all_records() function released all locks held by a specific transaction, as opposed to a lock on a specific record as is above
+	# """
+	# # Def inefficient. Do we care??
+	# def unlock_all_records(self, transaction_id):
+	# 	with self.lock_directory_lock:
+	# 		for _, lock in self.lock_directory.items():
+	# 			if transaction_id in lock.owners:
+	# 				lock.release_lock(transaction_id)

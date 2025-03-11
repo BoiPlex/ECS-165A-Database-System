@@ -29,6 +29,11 @@ class Config:
     LOCK_TYPE_SHARED = 0
     LOCK_TYPE_EXCLUSIVE = 1
 
+    # Return types
+    # False is 0
+    # True is 1
+    UNABLE_TO_ACQUIRE_LOCK = 2
+
 """
 Indirection col: Points to tail record change (when creating, points to itself and should be same as RID. When updated (record update created in tail page), should point to that new record)
 - Base record points to itself (on create)

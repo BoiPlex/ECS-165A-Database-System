@@ -5,6 +5,7 @@
         "bufferpool",
         "bytearray",
         "metacolumns",
-        "nonmeta"
+        "nonmeta",
+        "strat"
     ]
 }

@@ -1,3 +1,4 @@
+from lstore.config import Config
 from lstore.table import Table, Record
 from lstore.index import Index
 import threading
@@ -43,14 +44,18 @@ class TransactionWorker:
     def __run(self):
         for transaction in self.transactions:
             while True:
-                # each transaction returns True if committed or False if aborted
-                success = transaction.run()
-                if success:
+                # each transaction returns True if committed, False if aborted, or Config.UNABLE_TO_ACQUIRE_LOCK if unable to acquire lock
+                result = transaction.run()
+                if result == Config.UNABLE_TO_ACQUIRE_LOCK:
+                    time.sleep(random.uniform(0.1, 0.5)) # Wait for a randomized delay
+                    # Retry the transaction (next iteration)
+                elif result:
                     self.stats.append(True)
                     break
                 else:
-                    print("Transaction aborted. Retrying...")
-                    time.sleep(random.uniform(0.1, 0.5)) # Wait for a randomized delay before retrying
+                    print("Transaction discarded due to an error")
+                    self.stats.append(False)
+                    break
                     
         # stores the number of transactions that committed
         self.result = len(list(filter(lambda x: x, self.stats)))

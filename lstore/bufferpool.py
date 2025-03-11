@@ -1,6 +1,9 @@
 from lstore.config import Config
 from collections import OrderedDict
 from lstore.logical_page import LogicalPage
+
+import threading
+
 """
 There is 1 bufferpool per db, which means it's shared between tables
 
@@ -15,8 +18,10 @@ class Bufferpool():
         self.disk = disk
         self.page_table = OrderedDict()
         self.frames = {} # Maps location (table_name, page_range_index, record_type, logical_page_index) to frame
+        self.frame_locks = {} # Maps location to frame lock
+        self.frame_locks_lock = threading.Lock() # Lock for the frame_locks
         self.num_pinned = 0
-        # self.frames = [Frame() for i in range(Config.NUM_FRAMES)]
+        
     
     def request_logical_page_frame(self, num_columns, table_name, page_range_index, record_type, logical_page_index):
         """ Returns a page if its in memory, will load from disk if not. Returns the frame object """
@@ -38,8 +43,17 @@ class Bufferpool():
        
     def load_frame_from_disk(self, num_columns, table_name, page_range_index, record_type, logical_page_index):
         """ Loads page from disk into memory. """
-        logical_page = self.disk.read_logical_page(table_name, page_range_index, record_type, logical_page_index)        
-        
+
+        location = (table_name, page_range_index, record_type, logical_page_index)
+
+        with self.frame_locks_lock:
+            if location not in self.frame_locks:
+                self.frame_locks[location] = threading.Lock()
+
+        frame_lock = self.frame_locks[location]
+        with frame_lock:
+            logical_page = self.disk.read_logical_page(table_name, page_range_index, record_type, logical_page_index)        
+            
         if logical_page is None: # Creates new logical page if DNE
             logical_page = LogicalPage(num_columns)
 
@@ -69,24 +83,27 @@ class Bufferpool():
         if not frame.dirty:
             return
         
-        table_name, page_range_index,record_type, logical_page_index= frame.location
         # page_id = (table_name,page_range_index, record_type, logical_page_index)
-
         #if frame.location in self.frames:
             #logical_page = self.frames[frame.location].logical_page
 
         table_name, page_range_index, record_type, logical_page_index = frame.location
-        self.disk.write_logical_page(table_name, page_range_index, record_type, logical_page_index, frame.logical_page)
+
+        frame_lock = self.frame_locks[frame.location]
+        with frame_lock:
+            self.disk.write_logical_page(table_name, page_range_index, record_type, logical_page_index, frame.logical_page)
         #self.frames[frame.location].dirty = False #clean
         
         frame.dirty = False
+
     # Write back all dirty pages (called when closing the db and saving to disk)
     def write_back_all_dirty_frames(self):
-        for location, frame in self.frames.items(): 
+        for location, frame in self.frames.items():
             if frame.dirty:
-                table_name, page_range_index,record_type, logical_page_index = location
-                self.disk.write_logical_page(table_name, page_range_index, record_type, logical_page_index, frame.logical_page) #uses stored location modifying the logical page back to disk
-                frame.dirty = False
+                self.write_back_frame(frame)
+                # table_name, page_range_index,record_type, logical_page_index = location
+                # self.disk.write_logical_page(table_name, page_range_index, record_type, logical_page_index, frame.logical_page) #uses stored location modifying the logical page back to disk
+                # frame.dirty = False
 
     def pin_frame(self, frame):
         """ Prevents logical page from being evicted """
