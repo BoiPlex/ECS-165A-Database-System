@@ -192,3 +192,6 @@ class Transaction:
             rid = table.index.key_to_rid(table.key, primary_key)
             record_lock: Lock = self.lock_manager.get_lock(rid)
             self.locks.append((record_lock, Config.LOCK_TYPE_EXCLUSIVE))
+        
+        else:
+            raise Exception("Unknown query type")
