@@ -34,6 +34,7 @@ class Transaction:
             self.lock_manager = table.lock_manager
 
         self.queries.append((query, args))
+        print(dir(query))
 
         # Pass necessary locks for query
         self.locks.extend(self.get_query_locks(query, args, table))
@@ -46,7 +47,7 @@ class Transaction:
             # --------------------
             # Get necessary info for rollback_delete query
             rid = table.index.key_to_rid(table.key, primary_key)
-            record_lock: Lock = self.lock_manager.get_lock(rid)
+            record_lock: Lock = self.lock_manager.get_record_lock(rid)
             while True:
                 if record_lock.acquire_lock(self.transaction_id, Config.LOCK_TYPE_SHARED):
                     break
@@ -61,7 +62,9 @@ class Transaction:
 
             rollback_args = (rid, columns, location, indirection_rid)
             rollback_lock_tuple = (record_lock, Config.LOCK_TYPE_EXCLUSIVE)
-            self.rollback_queries.append((Query.rollback_delete, rollback_args, rollback_lock_tuple))
+
+            rollback_query = getattr(query, "rollback_delete", None)
+            self.rollback_queries.append((rollback_query, rollback_args, rollback_lock_tuple))
             
         elif getattr(query, "__func__", query) is Query.insert:
             columns = args # args tuple is exactly equal to columns
@@ -71,7 +74,9 @@ class Transaction:
             # sussy balls i love fortnite <3 IMPORTANT!!!
             rollback_args = (primary_key,)
             rollback_lock_tuple = self.get_query_locks(Query.delete, rollback_args, table)[0]
-            self.rollback_queries.append((Query.delete, rollback_args, rollback_lock_tuple))
+
+            rollback_query = getattr(query, "delete", None)
+            self.rollback_queries.append((rollback_query, rollback_args, rollback_lock_tuple))
         
         elif getattr(query, "__func__", query) is Query.update:
             primary_key, *columns = args
@@ -81,7 +86,7 @@ class Transaction:
             # --------------------
             # Get necessary info for rollback_update query
             rid = table.index.key_to_rid(table.key, primary_key)
-            record_lock: Lock = self.lock_manager.get_lock(rid)
+            record_lock: Lock = self.lock_manager.get_record_lock(rid)
             while True:
                 if record_lock.acquire_lock(self.transaction_id, Config.LOCK_TYPE_SHARED):
                     break
@@ -94,7 +99,9 @@ class Transaction:
 
             rollback_args = (rid, prev_indirection_rid)
             rollback_lock_tuple = (record_lock, Config.LOCK_TYPE_EXCLUSIVE)
-            self.rollback_queries.append((Query.rollback_update, rollback_args, rollback_lock_tuple))
+
+            rollback_query = getattr(query, "rollback_update", None)
+            self.rollback_queries.append((rollback_query, rollback_args, rollback_lock_tuple))
 
         
     # If you choose to implement this differently this method must still return True if transaction commits or False on abort
@@ -130,7 +137,7 @@ class Transaction:
 
     
     def commit(self): 
-        self.rollback_quires.clear()
+        self.rollback_queries.clear()
 
         # release all locks
         self.release_all_locks()
@@ -165,7 +172,7 @@ class Transaction:
             search_key, search_key_index, projected_columns_index = args[:3] # haha :3 we are so helpful
             rids = table.index.locate(search_key_index, search_key)
             for rid in rids:
-                record_lock: Lock = self.lock_manager.get_lock(rid)
+                record_lock: Lock = self.lock_manager.get_record_lock(rid)
                 record_locks.append((record_lock, Config.LOCK_TYPE_SHARED))
             return record_locks
         
@@ -174,27 +181,23 @@ class Transaction:
             start_range, end_range, aggregate_column_index = args[:3]
             rids = table.index.locate(search_key_index, search_key)
             for rid in rids:
-                record_lock: Lock = self.lock_manager.get_lock(rid)
+                record_lock: Lock = self.lock_manager.get_record_lock(rid)
                 record_locks.append((record_lock, Config.LOCK_TYPE_SHARED))
             return record_locks
             
         elif getattr(query, "__func__", query) is Query.delete:
             primary_key = args[0]
             rid = table.index.key_to_rid(table.key, primary_key)
-            record_lock: Lock = self.lock_manager.get_lock(rid)
+            record_lock: Lock = self.lock_manager.get_record_lock(rid)
             return [(record_lock, Config.LOCK_TYPE_EXCLUSIVE)]
                 
         elif getattr(query, "__func__", query) is Query.insert:
-            columns = args
-            primary_key = columns[table.key]
-            rid = table.index.key_to_rid(table.key, primary_key)
-            record_lock: Lock = self.lock_manager.get_lock(rid)
-            return [(record_lock, Config.LOCK_TYPE_EXCLUSIVE)]
+            return [] # Insert locking is handled in table
             
         elif getattr(query, "__func__", query) is Query.update:
             primary_key, *columns = args
             rid = table.index.key_to_rid(table.key, primary_key)
-            record_lock: Lock = self.lock_manager.get_lock(rid)
+            record_lock: Lock = self.lock_manager.get_record_lock(rid)
             return [(record_lock, Config.LOCK_TYPE_EXCLUSIVE)]
         
         else:

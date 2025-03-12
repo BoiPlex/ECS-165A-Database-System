@@ -6,29 +6,57 @@ from lstore.db import Database
 from lstore.index import Index
 from lstore.query import Query
 from lstore.config import Config
+from lstore.transaction import Transaction
+from lstore.transaction_worker import TransactionWorker
+from helper import remove_dir_if_exists
 
 # ----------------------------------------------------------------
 
 
 db = Database()
-
-db.open("amogus")
+remove_dir_if_exists("./amogus")
+db.open("./amogus")
 table = db.create_table("imposter", 3, 0)
 query = Query(table)
 
-# Insert
-# query.insert(1, 4, 18) # rid=1
+# Transactions
+t1 = Transaction()
+t1.add_query(query.insert, table, 1, 2, 3)
+t1.add_query(query.insert, table, 4, 5, 6)
+t1.add_query(query.insert, table, 7, 8, 9)
 
-# query.update(1, None, 12, 13) # rid=2,3
-# query.update(1, None, 14, 15) # rid=4,5
+# Transaction Workers
+tw1 = TransactionWorker()
+tw1.add_transaction(t1)
 
+# Run
+tw1.run()
 
-for i in range(0, -6, -1):
-    print(query.select_version(1, 0, [1, 1, 1], i)[0].columns)
+# Wait
+tw1.join()
+
+# Print
+print(query.select(1, 0, [1, 1, 1])[0].columns)
+print(query.select(4, 0, [1, 1, 1])[0].columns)
+print(query.select(7, 0, [1, 1, 1])[0].columns)
+
+# for i in range(0, -6, -1):
+#     print(query.select_version(1, 0, [1, 1, 1], i)[0].columns)
 
 
 db.close()
-print("close the database and write it to disk")
+
+
+
+
+
+
+
+
+
+
+
+
 
 # # db_reopened = Database()
 # db_reopened.open() # what would the p

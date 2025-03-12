@@ -8,14 +8,16 @@ class LockManager:
 		Dict of locked records. The key should be the RID, with the values being a lock object, list of owners, and lock type.
 		rid -> Lock()
 		'''
-		self.lock_directory = {}
-		
+		self.record_lock_directory = {}
+		self.record_lock_directory_lock = threading.Lock()
+
 		'''
-		Creates lock object for self.locks_lock, so that it is locked when get_lock() is called.
-		Can create a bottleneck - to mitigate this we should only lock self.locks when we are modifying (adding/removing locks), not just checking locks.
-		This allows for thread safety and reduces lock contention.
-		'''
-		self.lock_directory_lock = threading.Lock()
+        Dict of locked page ranges, specifically for inserting
+        page_range_index -> 
+        '''
+		self.insert_lock_directory = {}
+		self.insert_lock_directory_lock = threading.Lock()
+
 
 	"""
 	The get_lock() function requires a record ID, transaction ID, and lock type.
@@ -41,11 +43,18 @@ class LockManager:
 	  3.  Aborting if we can't upgrade a shared lock to exclusive ("S" to "X") (No-Wait policy)
 	  4. Returning true if lock is acquired
 	"""
-	def get_lock(self, base_rid):
-		with self.lock_directory_lock:
-			if base_rid not in self.lock_directory:
-				self.lock_directory[base_rid] = Lock()
-			return self.lock_directory[base_rid]
+
+	def get_record_lock(self, base_rid):
+		with self.record_lock_directory_lock:
+			if base_rid not in self.record_lock_directory:
+				self.record_lock_directory[base_rid] = Lock()
+			return self.record_lock_directory[base_rid]
+		
+	def get_insert_lock(self, page_range_index):
+		with self.insert_lock_directory_lock:
+			if page_range_index not in self.insert_lock_directory:
+				self.insert_lock_directory[page_range_index] = Lock()
+			return self.insert_lock_directory[page_range_index]
 		
 	# def lock_record(self, base_rid, transaction_id, lock_type):
 	# 	with self.lock_directory_lock:

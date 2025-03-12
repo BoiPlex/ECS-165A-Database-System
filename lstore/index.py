@@ -2,36 +2,46 @@
 A data structure holding indices for various columns of a table. Key column should be indexed by default, other columns can be indexed through this object. Indices are usually B-Trees, but other data structures can be used as well.
 """
 from BTrees.OOBTree import OOBTree
-import pickle 
+import pickle
+import threading
 
 class Index:
 
     def __init__(self, table):
         self.table = table # Exclude when serializing
         self.indices = [OOBTree() for _ in range(self.table.num_columns)]
+        self.lock = threading.Lock() # Lock for concurrent access to indices
 
     """
     # Returns the rid of the record of the given key value. Returns -1 if not found.
     """
     def key_to_rid(self, key_column, key_value):
-        rid_list = self.locate(key_column, key_value)
-        if not rid_list:
-            return -1
-        return rid_list[0]
+        with self.lock:
+            rid_list = self.locate(key_column, key_value, locked=True)
+            if not rid_list:
+                return -1
+            return rid_list[0]
        
 
     """
     # returns the location of all records with the given value on column "column"
     """
 
-    def locate(self, column, value):
-        rid_list = []
+    def locate(self, column, value, locked=False):
+        if locked:
+            rid_list = self._locate(column, value)
+        else:
+            with self.lock:
+                rid_list = self._locate(column, value)
+        return rid_list
         
+    # Helper function for locate
+    def _locate(self, column, value):
+        rid_list = []
         if self.indices[column] is not None and value in self.indices[column]:
             rid_list.extend(self.indices[column][value])
             # for rid in self.indices[column][value]:
             #     rid_list.append(self.indices[column][value])
-        
         return rid_list
 
     """
@@ -39,11 +49,11 @@ class Index:
     """
 
     def locate_range(self, begin, end, column):
-        rid_list = []
-        for value, rid in self.indices[column].items(begin, end): # Within the column it accesses all values based on the given range 
-            rid_list.extend(rid)
-
-        return rid_list
+        with self.lock:
+            rid_list = []
+            for value, rid in self.indices[column].items(begin, end): # Within the column it accesses all values based on the given range 
+                rid_list.extend(rid)
+            return rid_list
 
 
     """
@@ -51,15 +61,17 @@ class Index:
     """
 
     def create_index_with_rid(self, rid, columns):
-        for column_index, column_value in enumerate(columns):
-            if column_value not in self.indices[column_index]: # Creates new entries for values that aren't in the index
-                self.indices[column_index][column_value] = []
-            self.indices[column_index][column_value].append(rid)
+        with self.lock:
+            for column_index, column_value in enumerate(columns):
+                if column_value not in self.indices[column_index]: # Creates new entries for values that aren't in the index
+                    self.indices[column_index][column_value] = []
+                self.indices[column_index][column_value].append(rid)
     
     def delete_index_entry(self, rid, columns):
-        for column_index, column_value in enumerate(columns):
-            if column_value in self.indices[column_index]: # Deletes entries for values that is in the index
-                del self.indices[column_index][column_value]
+        with self.lock:
+            for column_index, column_value in enumerate(columns):
+                if column_value in self.indices[column_index]: # Deletes entries for values that is in the index
+                    del self.indices[column_index][column_value]
 
 
     def create_index(self, column):
@@ -93,12 +105,15 @@ class Index:
         state = self.__dict__.copy()
         if 'table' in state:
             del state['table']  # Exclude the table reference from being serialized
+        if 'lock' in state:
+            del state['lock']  # Exclude the lock from being serialized
         return state
 
     def __setstate__(self, state):
         # Restore the state and set table to None (or handle as needed)
         self.__dict__.update(state)
         self.table = None  # Ensure table is None after deserialization
+        self.lock = None
 
 
  #################

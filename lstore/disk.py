@@ -7,6 +7,7 @@ from lstore.physical_page import PhysicalPage
 import os
 import json
 import pickle
+import threading
 
 class Disk():
     def __init__(self, db_path):
@@ -99,6 +100,7 @@ class Disk():
         table.next_rid = table_header["next_rid"]
         table.page_directory = page_directory
         index.table = table
+        index.lock = threading.Lock()
         table.index = index
 
         # Fills table with page ranges stored in its directory

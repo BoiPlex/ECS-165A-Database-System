@@ -53,7 +53,7 @@ class TransactionWorker:
                     self.stats.append(True)
                     break
                 else:
-                    print("Transaction discarded due to an error")
+                    # print("Transaction discarded due to an error")
                     self.stats.append(False)
                     break
                     

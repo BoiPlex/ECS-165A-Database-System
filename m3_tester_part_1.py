@@ -2,10 +2,12 @@ from lstore.db import Database
 from lstore.query import Query
 from lstore.transaction import Transaction
 from lstore.transaction_worker import TransactionWorker
+from helper import remove_dir_if_exists
 
 from random import choice, randint, sample, seed
 
 db = Database()
+remove_dir_if_exists('./ECS165')
 db.open('./ECS165')
 
 # creating grades table
@@ -53,16 +55,19 @@ for i in range(num_threads):
 for i in range(number_of_transactions):
     transaction_workers[i % num_threads].add_transaction(insert_transactions[i])
 
-
+print("Running transaction workers...")
 
 # run transaction workers
 for i in range(num_threads):
     transaction_workers[i].run()
 
+print("Waiting for transaction workers...")
+
 # wait for workers to finish
 for i in range(num_threads):
     transaction_workers[i].join()
 
+print("Transaction workers finished")
 
 # Check inserted records using select query in the main thread outside workers
 for key in keys:
