@@ -29,7 +29,7 @@ class Transaction:
     # t = Transaction()
     # t.add_query(q.update, grades_table, 0, *[None, 1, None, 2, None])
     """
-    def add_query(self, query, table, *args):
+    def add_query(self, query, table: Table, *args):
         if not self.lock_manager:
             self.lock_manager = table.lock_manager
 
@@ -62,20 +62,19 @@ class Transaction:
             rollback_args = (rid, columns, location, indirection_rid)
             rollback_lock_tuple = (record_lock, Config.LOCK_TYPE_EXCLUSIVE)
 
-            rollback_query = getattr(query, "rollback_delete", None)
-            self.rollback_queries.append((rollback_query, rollback_args, rollback_lock_tuple))
+            self.rollback_queries.append((table.rollback_delete, rollback_args, rollback_lock_tuple))
             
         elif getattr(query, "__func__", query) is Query.insert:
             columns = args # args tuple is exactly equal to columns
             primary_key = columns[table.key]
+            rid = table.index.key_to_rid(table.key, primary_key)
 
             # Insert's rollback just does a delete
             # sussy balls i love fortnite <3 IMPORTANT!!!
-            rollback_args = (primary_key,)
+            rollback_args = (rid,)
             rollback_lock_tuple = self.get_query_locks(Query.delete, rollback_args, table)[0]
 
-            rollback_query = getattr(query, "delete", None)
-            self.rollback_queries.append((rollback_query, rollback_args, rollback_lock_tuple))
+            self.rollback_queries.append((table.delete_record, rollback_args, rollback_lock_tuple))
         
         elif getattr(query, "__func__", query) is Query.update:
             primary_key, *columns = args
@@ -99,8 +98,7 @@ class Transaction:
             rollback_args = (rid, prev_indirection_rid)
             rollback_lock_tuple = (record_lock, Config.LOCK_TYPE_EXCLUSIVE)
 
-            rollback_query = getattr(query, "rollback_update", None)
-            self.rollback_queries.append((rollback_query, rollback_args, rollback_lock_tuple))
+            self.rollback_queries.append((table.rollback_update, rollback_args, rollback_lock_tuple))
 
         
     # If you choose to implement this differently this method must still return True if transaction commits or False on abort

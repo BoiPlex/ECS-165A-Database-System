@@ -6,6 +6,8 @@ from helper import remove_dir_if_exists
 
 from random import choice, randint, sample, seed
 
+print("----- M3 Tester Part 1 -----")
+
 db = Database()
 remove_dir_if_exists('./ECS165')
 db.open('./ECS165')

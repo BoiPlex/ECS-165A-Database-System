@@ -2,6 +2,7 @@ from lstore.config import Config
 from lstore.bufferpool import Bufferpool
 from lstore.logical_page import LogicalPage
 
+import threading
 
 class PageRange:
     def __init__(self, table_name, page_range_index, num_columns, bufferpool):
@@ -17,6 +18,8 @@ class PageRange:
         self.num_base_records = 0 # Tracks number of base records in page range 
         self.num_tail_records = 0
         self.num_updates = 0 # Merge the page range once it reaches Config.NUM_UPDATES_FOR_MERGE
+
+        self.create_record_lock = threading.Lock()
 
     def has_capacity(self):
         return self.num_base_records < Config.MAX_RECORDS_PER_PAGE_RANGE
@@ -37,17 +40,18 @@ class PageRange:
     
     # Create NEW record (base or tail)
     def create_record(self, record_type, record_columns):
-        logical_page_index = self.find_free_logical_page(record_type) # Finds free logical page / creates new one
-        
-        frame = self.bufferpool.request_logical_page_frame(self.num_columns, self.table_name, self.page_range_index, record_type, logical_page_index)
-        self.bufferpool.pin_frame(frame)
-        frame.dirty = True
-        # Create base/tail record
-        offset_index = frame.logical_page.create_record(record_columns) # Can raise Error
-        self.bufferpool.unpin_frame(frame)
-        
-        # Return the index of the base/tail page the record was written to and offset index in the base/tail page
-        return logical_page_index, offset_index
+        with self.create_record_lock:
+            logical_page_index = self.find_free_logical_page(record_type) # Finds free logical page / creates new one
+            
+            frame = self.bufferpool.request_logical_page_frame(self.num_columns, self.table_name, self.page_range_index, record_type, logical_page_index)
+            self.bufferpool.pin_frame(frame)
+            frame.dirty = True
+            # Create base/tail record
+            offset_index = frame.logical_page.create_record(record_columns) # Can raise Error
+            self.bufferpool.unpin_frame(frame)
+            
+            # Return the index of the base/tail page the record was written to and offset index in the base/tail page
+            return logical_page_index, offset_index
     
     # Read single column value of a record (RECORD MUST ALREADY EXIST)
     def read_record_column(self, record_type, logical_page_index, offset_index, column_index):

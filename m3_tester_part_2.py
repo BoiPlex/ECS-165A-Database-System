@@ -5,6 +5,10 @@ from lstore.transaction_worker import TransactionWorker
 
 from random import choice, randint, sample, seed
 
+import m3_tester_part_1
+
+print("----- M3 Tester Part 2 -----")
+
 db = Database()
 db.open('./ECS165')
 
@@ -60,23 +64,26 @@ for j in range(number_of_operations_per_record):
             records[key][i] = value
             transactions[key % number_of_transactions].add_query(query.select, grades_table, key, 0, [1, 1, 1, 1, 1])
             transactions[key % number_of_transactions].add_query(query.update, grades_table, key, *updated_columns)
-print("Update finished")
 
 
-# add trasactions to transaction workers  
+
+# add transactions to transaction workers  
 for i in range(number_of_transactions):
     transaction_workers[i % num_threads].add_transaction(transactions[i])
 
-
+print("Running transaction workers...")
 
 # run transaction workers
 for i in range(num_threads):
     transaction_workers[i].run()
 
+print("Waiting for transaction workers...")
+
 # wait for workers to finish
 for i in range(num_threads):
     transaction_workers[i].join()
 
+print("Update finished")
 
 score = len(keys)
 for key in keys:

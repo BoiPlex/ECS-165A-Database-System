@@ -26,19 +26,7 @@ class Query:
             return False
         
         return self.table.delete_record(rid)
-    
-    def rollback_delete(self, rid, columns, location, indirection_rid):
-        # location stores (page_range_index, record_type, base_page_index, base_offset_index)
-        self.table.page_directory[rid] = location
-
-        # Sets indirection value back to the latest update, since delete set it to 0
-        page_range_index, record_type, base_page_index, base_offset_index = location
-        self.table.page_ranges[page_range_index].update_record_column(record_type, base_page_index, base_offset_index, Config.INDIRECTION_COLUMN, indirection_rid)
-        
-        self.table.index.create_index_with_rid(rid, columns)
-        return True
             
-    
     """
     # Insert a record with specified columns
     # Return True upon successful insertion
@@ -46,10 +34,6 @@ class Query:
     """
     def insert(self, *columns):
         return self.table.create_record(columns)
-    
-    # Delete inserted data in physical page?
-    def rollback_insert(self, ):
-        pass # UNUSED
 
     """
     # Update a record with specified key and columns
@@ -63,11 +47,6 @@ class Query:
         if not success:
             return False
         return True
-    
-    def rollback_update(self, rid, prev_indirection_rid):
-        page_range_index, _, base_page_index, base_offset_index = self.table.page_directory[rid]
-        self.table.page_ranges[page_range_index].update_record_column(Config.BASE_RECORD, base_page_index, base_offset_index, Config.INDIRECTION_COLUMN, prev_indirection_rid)
-        # Rollback merging?
     
     """
     # Read matching record with specified search key

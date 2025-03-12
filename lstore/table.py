@@ -33,9 +33,10 @@ class Table:
         # Maps RID -> (page_range_index, record_type, logical_page-index, offset_index)
         self.page_directory = {}
 
-        self.index = Index(self)
+        self.index = Index(self) # Index has a lock
         
         self.next_rid = 1 # RID of 0 is reserved to indicate deletion
+        self.next_rid_lock = threading.Lock()
 
         self.page_ranges = []
 
@@ -176,6 +177,11 @@ class Table:
         
         return True
     
+    def rollback_update(self, base_rid, prev_indirection_rid):
+        page_range_index, _, base_page_index, base_offset_index = self.page_directory[base_rid]
+        self.page_ranges[page_range_index].update_record_column(Config.BASE_RECORD, base_page_index, base_offset_index, Config.INDIRECTION_COLUMN, prev_indirection_rid)
+        # Rollback merging?
+    
     '''
     Deletes base record (along with associated tail record)
     For now just mark as deleted, will be fully implemented with __merge(self)
@@ -205,6 +211,17 @@ class Table:
         #     self.page_ranges[page_range_index].mark_to_delete_record(Config.TAIL_RECORD, tail_page_index, offset_index)
         #     del self.page_directory[tail_rid]
 
+        return True
+    
+    def rollback_delete(self, base_rid, columns, location, indirection_rid):
+        # location stores (page_range_index, record_type, base_page_index, base_offset_index)
+        self.page_directory[base_rid] = location
+
+        # Sets indirection value back to the latest update, since delete set it to 0
+        page_range_index, record_type, base_page_index, base_offset_index = location
+        self.page_ranges[page_range_index].update_record_column(record_type, base_page_index, base_offset_index, Config.INDIRECTION_COLUMN, indirection_rid)
+        
+        self.index.create_index_with_rid(base_rid, columns)
         return True
 
     '''
@@ -323,9 +340,10 @@ class Table:
         return column_value_nonmeta
 
     def allocate_rid(self):
-        rid = self.next_rid
-        self.next_rid += 1
-        return rid
+        with self.next_rid_lock:
+            rid = self.next_rid
+            self.next_rid += 1
+            return rid
 
     def get_next_lineage_rid(self, record_type, rid):
         if rid not in self.page_directory:
