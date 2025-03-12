@@ -34,7 +34,6 @@ class Transaction:
             self.lock_manager = table.lock_manager
 
         self.queries.append((query, args))
-        print(dir(query))
 
         # Pass necessary locks for query
         self.locks.extend(self.get_query_locks(query, args, table))
