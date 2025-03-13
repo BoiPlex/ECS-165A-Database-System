@@ -1,24 +1,24 @@
 Group Name: The Data Avengers
 
-Grading: Our group chose to be graded 50% on the auto-grader
+Grading: Our group chose to be graded 100% on the auto-grader
 
 Attribution section:
 - Karim Shami:
     - 25%
     - System Architect
-    - Designed the disk/bufferpool/merge and worked on them
+    - Designed the transaction workers, transactions, and where to lock for concurrency
 - Leif Good-Olson:
     - 25%
-    - Merge Developer
-    - Worked on the merge and all other parts of the project
+    - Transaction Developer
+    - Worked on transactions, ensuring proper lock acquiring/releasing
 - Matthew Abalos:
-    - 17.5%
-    - Bufferpool Developer
-    - Created the bufferpool and repurposed the code to use it
+    - 20%
+    - Rollback Developer
+    - Worked on the rollback calls for write queries
 - Kavya Sasikumar:
-    - 17.5%
+    - 15%
     - Disk Developer
-    - Developed the disk read/write operations
+    - Made the bufferpool accommodate concurrency by locking frames
 - Sri Lakshmi:
     - 15%
     - Tester
