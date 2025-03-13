@@ -19,11 +19,15 @@ db.open("./amogus")
 table = db.create_table("imposter", 3, 0)
 query = Query(table)
 
+query.insert(1, 2, 3)
+query.insert(4, 5, 6)
+query.insert(7, 8, 9)
+
 # Transactions
 t1 = Transaction()
-t1.add_query(query.insert, table, 1, 2, 3)
-t1.add_query(query.insert, table, 4, 5, 6)
-t1.add_query(query.insert, table, 7, 8, 9)
+t1.add_query(query.update, table, 1, *[None, 69, 420])
+t1.add_query(query.update, table, 4, *[None, 91, 11])
+t1.add_query(query.update, table, 7, *[None, 72, 79])
 
 # Transaction Workers
 tw1 = TransactionWorker()
@@ -47,12 +51,7 @@ print(query.select(7, 0, [1, 1, 1])[0].columns)
 db.close()
 
 
-
-
-
-
-
-
+print("Done!")
 
 
 

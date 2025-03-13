@@ -3,9 +3,12 @@ from lstore.query import Query
 from lstore.transaction import Transaction
 from lstore.transaction_worker import TransactionWorker
 
+from helper import remove_dir_if_exists
+
 from random import choice, randint, sample, seed
 
 db = Database()
+remove_dir_if_exists('./ECS165')
 db.open('./ECS165')
 
 # creating grades table

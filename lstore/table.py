@@ -39,6 +39,7 @@ class Table:
         self.next_rid_lock = threading.Lock()
 
         self.page_ranges = []
+        self.page_ranges_lock = threading.Lock()
 
         # Merging
         self.merge_queue = []
@@ -75,11 +76,12 @@ class Table:
         if len(record_nonmeta_columns) != self.num_columns or self.index.key_to_rid(self.key, record_nonmeta_columns[self.key]) != -1:
             return False # Record could not be created
 
-        page_range_index = self.find_free_page_range()
-        if page_range_index < 0:
-            # Allocate new page range
-            page_range_index = len(self.page_ranges)
-            self.page_ranges.append(PageRange(self.name, page_range_index, self.num_columns + Config.NUM_META_COLUMNS, self.bufferpool))
+        with self.page_ranges_lock:
+            page_range_index = self.find_free_page_range()
+            if page_range_index < 0:
+                # Allocate new page range
+                page_range_index = len(self.page_ranges)
+                self.page_ranges.append(PageRange(self.name, page_range_index, self.num_columns + Config.NUM_META_COLUMNS, self.bufferpool))
         
         # Get unique RID
         base_rid = self.allocate_rid()
@@ -242,6 +244,7 @@ class Table:
                 base_pages_copy = []
                 num_base_pages = ((self.page_ranges[page_range_index].num_base_records - 1) // Config.MAX_RECORDS_PER_LOGICAL_PAGE) + 1
                 for base_page_index in range(num_base_pages):
+                    
                     base_page_frame = self.bufferpool.request_logical_page_frame(self.get_total_columns(), self.name, page_range_index, Config.BASE_RECORD, base_page_index)
                     
                     self.bufferpool.pin_frame(base_page_frame)

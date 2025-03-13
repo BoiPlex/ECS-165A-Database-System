@@ -6,13 +6,20 @@ import time
 import random
 
 class TransactionWorker:
+    transaction_count = 0
+    transaction_count_lock = threading.Lock()
+
+    next_transaction_worker_id = 1
 
     """
     # Creates a transaction worker object.
     """
-    def __init__(self, transactions = []):
+    def __init__(self):
+        self.transaction_worker_id = TransactionWorker.next_transaction_worker_id
+        TransactionWorker.next_transaction_worker_id += 1
+    
         self.stats = []
-        self.transactions = transactions
+        self.transactions = []
         self.result = 0
         self.thread = None
         
@@ -51,10 +58,14 @@ class TransactionWorker:
                     # Retry the transaction (next iteration)
                 elif result:
                     self.stats.append(True)
+                    with TransactionWorker.transaction_count_lock:
+                        TransactionWorker.transaction_count += 1
+                        # print(self.transaction_worker_id, TransactionWorker.transaction_count)
                     break
                 else:
                     # print("Transaction discarded due to an error")
                     self.stats.append(False)
+                    # print("FAILED TRANSACTION")
                     break
                     
         # stores the number of transactions that committed

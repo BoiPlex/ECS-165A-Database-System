@@ -14,8 +14,7 @@ class Transaction:
         self.transaction_id = Transaction.next_transaction_id
         Transaction.next_transaction_id += 1
 
-        self.queries = []
-        self.locks = [] # List of tuples, each is (Lock, lock_type) the transaction must acquire and release
+        self.queries = [] # List of tuples, each is (query, args, query_locks)
 
         self.rollback_queries = [] # stores original values for rollback
         
@@ -33,10 +32,10 @@ class Transaction:
         if not self.lock_manager:
             self.lock_manager = table.lock_manager
 
-        self.queries.append((query, args))
-
         # Pass necessary locks for query
-        self.locks.extend(self.get_query_locks(query, args, table))
+        query_locks = self.get_query_locks(query, args, table)
+
+        self.queries.append((query, args, query_locks))
 
         # use table for aborting
         # TODO
@@ -104,10 +103,13 @@ class Transaction:
     # If you choose to implement this differently this method must still return True if transaction commits or False on abort
     def run(self):
         # acquire all locks, if unable then return Config.UNABLE_TO_ACQUIRE_LOCK that tells TransactionWorker to retry the transaction
-        self.acquire_all_locks()
+        # ??? Not returning Config.UNABLE_TO_ACQUIRE_LOCK
 
-        for query_index, (query, args) in enumerate(self.queries):
+        for query_index, (query, args, query_locks) in enumerate(self.queries):
+            self.acquire_query_locks(query_locks)
             result = query(*args)
+            self.release_query_locks(query_locks)
+
             # If the query has failed the transaction should abort
             if result == False:
                 self.abort(query_index)
@@ -117,9 +119,6 @@ class Transaction:
     
     def abort(self, last_query_index):
         # TODO:
-
-        # release all original locks
-        self.release_all_locks()
         
         # do rollback
         for (rollback_query, rollback_args, rollback_lock_tuple) in self.rollback_queries:
@@ -136,21 +135,18 @@ class Transaction:
     def commit(self): 
         self.rollback_queries.clear()
 
-        # release all locks
-        self.release_all_locks()
-
         return True
     
 
     # Alternative strat: Return true/false rather than busy waiting
-    def acquire_all_locks(self):
-        for lock, lock_type in self.locks:
+    def acquire_query_locks(self, query_locks):
+        for lock, lock_type in query_locks:
             while True:
                 if lock.acquire_lock(self.transaction_id, lock_type):
                     break
 
-    def release_all_locks(self):
-        for lock, lock_type in self.locks:
+    def release_query_locks(self, query_locks):
+        for lock, lock_type in query_locks:
             while True:
                 if lock.release_lock(self.transaction_id):
                     break
@@ -166,9 +162,9 @@ class Transaction:
     def get_query_locks(self, query, args, table):
         if getattr(query, "__func__", query) is Query.select or getattr(query, "__func__", query) is Query.select_version:
             record_locks = []
-            search_key, search_key_index, projected_columns_index = args[:3] # haha :3 we are so helpful
-            rids = table.index.locate(search_key_index, search_key)
-            for rid in rids:
+            search_key, search_key_index, projected_columns_index = args[:3] # haha :3 we are so helpful. ? You are
+            rid_list = table.index.locate(search_key_index, search_key)
+            for rid in rid_list:
                 record_lock: Lock = self.lock_manager.get_record_lock(rid)
                 record_locks.append((record_lock, Config.LOCK_TYPE_SHARED))
             return record_locks
@@ -176,8 +172,8 @@ class Transaction:
         elif getattr(query, "__func__", query) is Query.sum or getattr(query, "__func__", query) is Query.sum_version:
             record_locks = []
             start_range, end_range, aggregate_column_index = args[:3]
-            rids = table.index.locate(search_key_index, search_key)
-            for rid in rids:
+            rid_list = table.index.locate_range(start_range, end_range, table.key)
+            for rid in rid_list:
                 record_lock: Lock = self.lock_manager.get_record_lock(rid)
                 record_locks.append((record_lock, Config.LOCK_TYPE_SHARED))
             return record_locks
@@ -199,3 +195,4 @@ class Transaction:
         
         else:
             raise Exception("Unknown query type")
+    

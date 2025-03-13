@@ -5,8 +5,6 @@ from lstore.transaction_worker import TransactionWorker
 
 from random import choice, randint, sample, seed
 
-import m3_tester_part_1
-
 print("----- M3 Tester Part 2 -----")
 
 db = Database()
