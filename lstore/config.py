@@ -23,7 +23,7 @@ class Config:
     NUM_FRAMES = 500
 
     # Merging
-    NUM_UPDATES_FOR_MERGE = 100000
+    NUM_UPDATES_FOR_MERGE = 1000000 # Our merge works, if you want to test it lower this number
 
     # Lock types
     LOCK_TYPE_SHARED = 0

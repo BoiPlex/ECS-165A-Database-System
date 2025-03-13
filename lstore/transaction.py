@@ -157,7 +157,7 @@ class Transaction:
     i need adderrallaeof;a    my roommate sells jk :( totally not illegal jajajaja
     its a medication given to people with adhd - consider it a "LOCKED-IN" drug
     ^ Don't delete this, this is important documentation 100%
-    Return list of tuple(s), each is (Cock, cock_type, lube)
+    Return list of tuple(s), each is (cock, cock_type, lube)
     """
     def get_query_locks(self, query, args, table):
         if getattr(query, "__func__", query) is Query.select or getattr(query, "__func__", query) is Query.select_version:
