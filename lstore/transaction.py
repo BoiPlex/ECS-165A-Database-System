@@ -69,7 +69,6 @@ class Transaction:
             rid = table.index.key_to_rid(table.key, primary_key)
 
             # Insert's rollback just does a delete
-            # sussy balls i love fortnite <3 IMPORTANT!!!
             rollback_args = (rid,)
             rollback_lock_tuple = self.get_query_locks(Query.delete, rollback_args, table)[0]
 
@@ -154,10 +153,6 @@ class Transaction:
     
     """
     ACQUIRE (actually get) LOCKS WOOOHOOOO
-    i need adderrallaeof;a    my roommate sells jk :( totally not illegal jajajaja
-    its a medication given to people with adhd - consider it a "LOCKED-IN" drug
-    ^ Don't delete this, this is important documentation 100%
-    Return list of tuple(s), each is (cock, cock_type, lube)
     """
     def get_query_locks(self, query, args, table):
         if getattr(query, "__func__", query) is Query.select or getattr(query, "__func__", query) is Query.select_version:
