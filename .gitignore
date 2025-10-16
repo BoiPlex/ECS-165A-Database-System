@@ -1,0 +1,121 @@
+# ======================================
+# Python / General
+# ======================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+*.so
+
+# Byte-compiled / optimized / DLL files
+*.dll
+*.exe
+*.bak
+*.swp
+*.swo
+
+# ======================================
+# Virtual Environments
+# ======================================
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# ======================================
+# Build / Distribution
+# ======================================
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# ======================================
+# Testing / Coverage
+# ======================================
+.coverage
+.tox/
+.nox/
+.pytest_cache/
+coverage.xml
+htmlcov/
+.cache/
+nosetests.xml
+junit.xml
+
+# ======================================
+# Logs / Outputs
+# ======================================
+*.log
+logs/
+*.tmp
+*.temp
+*.out
+*.err
+
+# ======================================
+# IDE / Editor Settings
+# ======================================
+.vscode/
+.idea/
+*.iml
+*.sublime-project
+*.sublime-workspace
+.DS_Store
+Thumbs.db
+
+# ======================================
+# Database / Project Specific
+# ======================================
+# Ignore any generated data files
+data/
+storage/
+*.db
+*.dat
+*.bin
+*.csv
+*.json
+
+# Ignore merge output files or debug snapshots
+merge_output/
+debug_output/
+
+# ======================================
+# Jupyter / Notebooks
+# ======================================
+.ipynb_checkpoints
+*.ipynb
+
+# ======================================
+# OS / Miscellaneous
+# ======================================
+.DS_Store
+Desktop.ini
+*.swp
+*.bak
+*.tmp
+
+# ======================================
+# Local Environment / Secrets
+# ======================================
+.env.local
+.env.production
+.env.development
+*.secret
+*.key
+*.pem
