@@ -102,23 +102,6 @@ All test cases were designed to validate both **logical correctness** and **perf
 This project provides hands-on insight into how database engines handle **data versioning, merging, and transactional consistency**—the same core concepts underlying enterprise systems like PostgreSQL, SQL Server, and Snowflake.  
 It serves as a strong educational foundation for anyone studying **database internals**, **storage design**, or **system-level performance optimization**.
 
-## Project Structure
-
-```
-L-Store-DBMS/
-│
-├── lstore/
-│   ├── db.py           # Database entry point
-│   ├── table.py        # Table and page structure
-│   ├── page.py         # Base/tail page management
-│   ├── record.py       # Record versioning logic
-│   └── index.py        # Simple indexing structure
-│
-├── tester.py           # Built-in correctness and performance tests
-├── requirements.txt    # Python dependencies
-└── README.md           # Project documentation
-```
-
 ## Notes
 
 * The system is **educational**, not production-grade.  
@@ -127,4 +110,4 @@ L-Store-DBMS/
 
 ## License
 
-This project is licensed under the MIT License. See the `LICENSE` file for details.
+This project is licensed under the Apache License. See the `LICENSE` file for details.
